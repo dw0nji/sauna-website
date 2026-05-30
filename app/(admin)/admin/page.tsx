@@ -53,38 +53,40 @@ function AdminDashboard() {
         {bookings.length === 0 ? (
           <p className="text-gray-500 text-sm">No bookings yet.</p>
         ) : (
-          <table className="w-full text-sm border border-gray-200 rounded">
-            <thead className="bg-gray-50 text-left">
-              <tr>
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Email</th>
-                <th className="px-4 py-2 font-medium">Date</th>
-                <th className="px-4 py-2 font-medium">Time</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map((b) => (
-                <tr key={b.id} className="border-t border-gray-100">
-                  <td className="px-4 py-2">{b.customerName}</td>
-                  <td className="px-4 py-2">{b.customerEmail}</td>
-                  <td className="px-4 py-2">{b.date}</td>
-                  <td className="px-4 py-2">{b.time}</td>
-                  <td className="px-4 py-2 capitalize">{b.status}</td>
-                  <td className="px-4 py-2 text-right">
-                    <button
-                      onClick={() => setPendingCancelId(b.id)}
-                      className="text-gray-400 hover:text-red-500 transition-colors text-xs cursor-pointer"
-                      title="Cancel booking"
-                    >
-                      ✕
-                    </button>
-                  </td>
+          <div className="border overflow-x-auto scrollbar-thin  border-gray-200 rounded">
+                <table className="text-sm max-w-full">
+              <thead className="bg-gray-50 text-left">
+                <tr>
+                  <th className="px-4 py-2 font-medium whitespace-nowrap">Name</th>
+                  <th className="px-4 py-2 font-medium whitespace-nowrap">Email</th>
+                  <th className="px-4 py-2 font-medium whitespace-nowrap">Date</th>
+                  <th className="px-4 py-2 font-medium whitespace-nowrap">Time</th>
+                  <th className="px-4 py-2 font-medium whitespace-nowrap">Status</th>
+                  <th className="px-4 py-2" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {bookings.map((b) => (
+                  <tr key={b.id} className="border-t border-gray-100">
+                    <td className="px-4 py-2 whitespace-nowrap">{b.customerName}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{b.customerEmail}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{b.date}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{b.time}</td>
+                    <td className="px-4 py-2 capitalize whitespace-nowrap">{b.status}</td>
+                    <td className="px-4 py-2 text-right">
+                      <button
+                        onClick={() => setPendingCancelId(b.id)}
+                        className="text-gray-400 hover:text-red-500 transition-colors text-xs cursor-pointer"
+                        title="Cancel booking"
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
@@ -97,7 +99,7 @@ function AdminDashboard() {
         {slots.length === 0 ? (
           <p className="text-gray-500 text-sm">No available slots.</p>
         ) : (
-          <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
             {slots.map((s) => (
               <li
                 key={s.id}
