@@ -24,9 +24,9 @@ export default function PackagesSection({ selectedPackageId, onSelect }: Props) 
               className={`relative flex flex-col rounded-2xl overflow-hidden border-2 transition-all duration-300
                 ${pkg.highlight
                   ? 'border-amber-500 shadow-xl shadow-amber-500/20 scale-105'
-                  : 'border-gray-200 hover:border-gray-400'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
                 }
-                ${isSelected ? 'ring-4 ring-amber-400 ring-offset-2' : ''}
+                ${isSelected ? 'ring-4 ring-amber-400 ring-offset-2 ring-offset-white dark:ring-offset-gray-950' : ''}
               `}
             >
               {pkg.highlight && (
@@ -47,12 +47,12 @@ export default function PackagesSection({ selectedPackageId, onSelect }: Props) 
                 </div>
               </div>
 
-              <div className="bg-white flex-1 p-6 flex flex-col gap-6">
+              <div className="bg-white dark:bg-gray-800 flex-1 p-6 flex flex-col gap-6">
                 <ul className="space-y-3">
                   {pkg.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-3 text-sm text-gray-700">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center">
-                        <svg className="w-3 h-3 text-amber-600" viewBox="0 0 12 12" fill="none">
+                    <li key={feature} className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                        <svg className="w-3 h-3 text-amber-600 dark:text-amber-400" viewBox="0 0 12 12" fill="none">
                           <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </span>
@@ -68,7 +68,7 @@ export default function PackagesSection({ selectedPackageId, onSelect }: Props) 
                       ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
                       : pkg.highlight
                         ? 'bg-gray-900 text-white hover:bg-gray-700'
-                        : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600'
                     }
                   `}
                 >

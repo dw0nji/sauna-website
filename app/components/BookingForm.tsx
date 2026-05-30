@@ -11,7 +11,7 @@ import { Package } from '../lib/packages'
 const CheckoutModal = dynamic(() => import('./CheckoutModal'), { ssr: false })
 
 const INPUT =
-  'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition'
+  'w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
 type FormData = {
   name: string
@@ -180,12 +180,12 @@ export default function BookingForm({ selectedPackage }: Props) {
               <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
             Thanks, <strong>{form.name}</strong>! Your payment was successful and we've reserved your
             slot. A confirmation will be sent to <strong>{form.email}</strong> shortly.
           </p>
           <button
-            className="text-sm text-gray-500 underline hover:text-gray-800 cursor-pointer"
+            className="text-sm text-gray-500 dark:text-gray-400 underline hover:text-gray-800 dark:hover:text-gray-200 cursor-pointer"
             onClick={() => { setForm(EMPTY); setSubmitted(false) }}
           >
             Make another booking
@@ -203,11 +203,11 @@ export default function BookingForm({ selectedPackage }: Props) {
         subtitle="Reserve the sauna for your group — includes the cold plunge and firepit."
       >
         {selectedPackage && (
-          <div className="max-w-2xl mx-auto mb-8 flex items-center justify-between shadow-amber-50 shadow-2xl border-2 border-black  px-5 py-4">
+          <div className="max-w-2xl mx-auto mb-8 flex items-center justify-between shadow-amber-50 shadow-2xl border-2 border-black dark:border-gray-600 dark:bg-gray-900 px-5 py-4">
             <div>
               <p className="text-xs text-amber-600 font-semibold uppercase tracking-widest">Selected Package</p>
-              <p className="font-bold text-gray-900 text-lg">{selectedPackage.name}</p>
-              <p className="text-sm text-gray-500">{selectedPackage.duration} · Up to {selectedPackage.maxGuests} guests</p>
+              <p className="font-bold text-gray-900 dark:text-white text-lg">{selectedPackage.name}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{selectedPackage.duration} · Up to {selectedPackage.maxGuests} guests</p>
             </div>
             <div className="text-right">
               {(() => {
@@ -219,10 +219,10 @@ export default function BookingForm({ selectedPackage }: Props) {
                       {discount > 0 && (
                         <span className="text-sm text-gray-400 line-through">£{full?.toFixed(2)}</span>
                       )}
-                      <p className="text-3xl font-black text-gray-900">£{price?.toFixed(2)}</p>
+                      <p className="text-3xl font-black text-gray-900 dark:text-white">£{price?.toFixed(2)}</p>
                     </div>
                     {discount > 0 && (
-                      <span className="inline-block mt-1 bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                      <span className="inline-block mt-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 text-xs font-semibold px-2 py-0.5 rounded-full">
                         You save £{discount.toFixed(2)}
                       </span>
                     )}
@@ -241,14 +241,14 @@ export default function BookingForm({ selectedPackage }: Props) {
         )}
 
         {!selectedPackage && (
-          <div className="max-w-2xl mx-auto mb-8 flex items-center gap-4 bg-gray-50 border border-dashed border-gray-300 rounded-xl px-5 py-4">
-            <div className="w-10 h-10 rounded-full bg-amber-100 shrink-0 flex items-center justify-center">
-              <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="max-w-2xl mx-auto mb-8 flex items-center gap-4 bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl px-5 py-4">
+            <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 shrink-0 flex items-center justify-center">
+              <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-800">No package selected</p>
+              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No package selected</p>
               <button
                 type="button"
                 onClick={() => document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' })}
@@ -364,7 +364,7 @@ export default function BookingForm({ selectedPackage }: Props) {
             <button
               type="submit"
               disabled={submitting || !selectedPackage}
-              className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-gray-900 dark:bg-amber-600 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-700 dark:hover:bg-amber-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting ? (
                 <>
