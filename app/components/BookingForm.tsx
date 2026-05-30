@@ -4,17 +4,8 @@ import { useState } from 'react'
 import SectionWrapper from './SectionWrapper'
 import FormField from './FormField'
 import { useBooking } from './BookingProvider'
-import { Booking } from './models/Booker'
+import { Booking, TimeSlot } from './models/Booker'
 
-const TIME_SLOTS = [
-  '9:00 AM',
-  '10:30 AM',
-  '12:00 PM',
-  '2:00 PM',
-  '3:30 PM',
-  '5:00 PM',
-  '6:30 PM',
-]
 
 const INPUT =
   'w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400'
@@ -45,7 +36,7 @@ export default function BookingForm() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [slotLoad, setSlotLoad] = useState(false)
-  const [timeslots, setTimeslots] = useState<string[]>([])
+  const [timeslots, setTimeslots] = useState<TimeSlot[]>([])
   const { controller } = useBooking()
 
   function handleChange(
@@ -73,7 +64,17 @@ export default function BookingForm() {
     }
 
     try {
-      await controller.createBooking(booking)
+      const slot = timeslots.find((slot)=>{
+        if (slot.time === form.time && slot.date === form.date){
+          return slot
+        }
+      })
+      if (slot){
+        await controller.createBooking(booking)
+        await controller.cancelTimeSlot(slot.id)
+      }else{
+        throw new Error('There was a problem processing your booking.')
+      }
       setSubmitted(true)
     } catch (err) {
       setSubmitError((err as Error).message)
@@ -89,7 +90,7 @@ export default function BookingForm() {
     setSlotLoad(true)
     try {
       const slots = controller?.getAvailableTimeSlots(e.target.value)
-      setTimeslots(slots ? slots.map((s) => s.time) : [])
+      setTimeslots(slots ??  [])
     } finally {
       setSlotLoad(false)
     }
@@ -192,8 +193,8 @@ export default function BookingForm() {
           >
             <option value="">Select a time</option>
             {timeslots.length > 0 ? timeslots.map((t) => (
-              <option key={t} value={t}>
-                {t}
+              <option key={t.id} value={t.time}>
+                {t.time}
               </option>
             )):
             <option disabled={true}>There is no availability on this date</option>

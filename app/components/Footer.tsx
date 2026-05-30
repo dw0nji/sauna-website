@@ -10,9 +10,9 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between gap-8 mb-8">
           <div>
-            <p className="text-white font-bold text-lg mb-2">Sauna Co.</p>
-            <p className="text-sm">123 Wellness Lane, Helsinki, FI</p>
-            <p className="text-sm">hello@saunaco.com · +358 40 123 4567</p>
+            <p className="text-white font-bold text-lg mb-2">Cool Coo Sauna</p>
+            <p className="text-sm">Mill Cottage, Glenmallie Road, lochyside Caol, PH33 7BA</p>
+            <p className="text-sm">hello@saunaco.com · +447884402926</p>
           </div>
           <nav>
             <ul className="flex flex-col sm:flex-row gap-4">

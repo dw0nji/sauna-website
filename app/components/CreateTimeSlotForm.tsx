@@ -3,17 +3,43 @@
 import { useState } from 'react'
 import { useBooking } from './BookingProvider'
 import FormField from './FormField'
+import { Booking } from './models/Booker'
 
 const TIME_SLOTS = [
-  '9:00 AM', '10:30 AM', '12:00 PM',
-  '2:00 PM', '3:30 PM', '5:00 PM', '6:30 PM',
-]
+  '9:00 AM',
+  '9:30 AM',
+  '10:00 AM',
+  '10:30 AM',
+  '11:00 AM',
+  '11:30 AM',
+  '12:00 PM',
+  '12:30 PM',
+  '1:00 PM',
+  '1:30 PM',
+  '2:00 PM',
+  '2:30 PM',
+  '3:00 PM',
+  '3:30 PM',
+  '4:00 PM',
+  '4:30 PM',
+  '5:00 PM',
+  '5:30 PM',
+  '6:00 PM',
+  '6:30 PM',
+  '7:00 PM',
+  '7:30 PM',
+  '8:00 PM',
+  '8:30 PM',
+  '9:00 PM',
+  '9:30 PM',
+  '10:00 PM',
+];
 
 const INPUT = 'w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400'
 
 type Status = { type: 'success' | 'error'; message: string } | null
 
-export default function CreateTimeSlotForm({ onCreated }: { onCreated?: () => void }) {
+export default function CreateTimeSlotForm({bookings, onCreated }: {bookings: Booking[], onCreated?: () => void }) {
   const { controller } = useBooking()
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
@@ -28,6 +54,19 @@ export default function CreateTimeSlotForm({ onCreated }: { onCreated?: () => vo
     setStatus(null)
 
     try {
+      const doubleBooking = bookings.find((b)=>{
+        console.log(b.date + ' compared to ' + date + ' and ' + b.time + ' compared to ' + time)
+        console.log(b.date == date && b.time == time)
+        if(b.date == date && b.time == time){
+          return b
+        }
+
+      })
+        if (doubleBooking){
+          setStatus({ type: 'error', message: `There is already a booking at: ${time} on ${date}` })
+          return
+        }
+
       await controller.createTimeSlot({
         id: Date.now(),
         date,

@@ -64,7 +64,7 @@ function AdminDashboard() {
       </section>
 
       <section className="mb-10">
-        <CreateTimeSlotForm onCreated={handleSlotCreated} />
+        <CreateTimeSlotForm bookings={bookings} onCreated={handleSlotCreated} />
       </section>
 
       <section>
