@@ -15,7 +15,7 @@ export default function TestimonialCard({ name, text, rating }: TestimonialCardP
         ))}
       </div>
       <p className="text-gray-700 text-sm leading-relaxed flex-1">"{text}"</p>
-      <span className="text-sm font-medium text-gray-900">— {name}</span>
+      <span className="text-sm font-medium text-gray-900">- {name}</span>
     </div>
   )
 }

@@ -13,8 +13,28 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sauna Co. — Book a Session",
-  description: "Book your private sauna session online. Classic Finnish sauna, steam room, and couples packages available.",
+  title: "Cool Coo Sauna — Fort William, Scottish Highlands",
+  description:
+    "Book a sauna session in the Scottish Highlands, near Ben Nevis, Fort William. Enjoy a wood-fired sauna, cold plunge, and cosy fireplace. Cool Coo Sauna — the ultimate outdoor Highland experience.",
+  keywords: [
+    "sauna",
+    "Cool Coo Sauna",
+    "Fort William sauna",
+    "Highlands sauna",
+    "Ben Nevis sauna",
+    "Scottish Highlands",
+    "cold plunge",
+    "fireplace sauna",
+    "outdoor sauna Scotland",
+    "wood-fired sauna Fort William",
+  ],
+  openGraph: {
+    title: "Cool Coo Sauna — Fort William, Scottish Highlands",
+    description:
+      "Experience a wood-fired sauna, cold plunge, and fireplace retreat in the Scottish Highlands near Ben Nevis. Book your session at Cool Coo Sauna today.",
+    type: "website",
+    locale: "en_GB",
+  },
 };
 
 export default function RootLayout({

@@ -3,21 +3,32 @@
 import { useState, useEffect } from 'react'
 import { BookingProvider, useBooking } from '../../components/BookingProvider'
 import CreateTimeSlotForm from '../../components/CreateTimeSlotForm'
-import type { TimeSlot } from '../../components/models/Booker'
+import ConfirmDialog from '../../components/ConfirmDialog'
+import type { Booking, TimeSlot } from '../../components/models/Booker'
 
 function AdminDashboard() {
   const { controller, loading, error } = useBooking()
+  const [bookings, setBookings] = useState<Booking[]>([])
   const [slots, setSlots] = useState<TimeSlot[]>([])
+  const [pendingCancelId, setPendingCancelId] = useState<number | null>(null)
 
   useEffect(() => {
-    if (controller) setSlots(controller.getAvailableTimeSlots())
+    if (!controller) return
+    setBookings(controller.getAllBookings())
+    setSlots(controller.getAvailableTimeSlots())
   }, [controller])
 
   if (loading) return <p className="p-8 text-gray-500">Loading bookings...</p>
   if (error) return <p className="p-8 text-red-500">Error: {error}</p>
   if (!controller) return null
 
-  const bookings = controller.getAllBookings()
+  async function handleCancelBooking(id: number) {
+    if (!controller) return
+    await controller.cancelBooking(id)
+    setBookings(controller.getAllBookings())
+    setSlots(controller.getAvailableTimeSlots())
+    setPendingCancelId(null)
+  }
 
   async function handleCancelSlot(id: number) {
     if (!controller) return
@@ -28,6 +39,10 @@ function AdminDashboard() {
   function handleSlotCreated() {
     if (controller) setSlots(controller.getAvailableTimeSlots())
   }
+
+  const pendingBooking = pendingCancelId !== null
+    ? bookings.find((b) => b.id === pendingCancelId)
+    : null
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-12">
@@ -46,6 +61,7 @@ function AdminDashboard() {
                 <th className="px-4 py-2 font-medium">Date</th>
                 <th className="px-4 py-2 font-medium">Time</th>
                 <th className="px-4 py-2 font-medium">Status</th>
+                <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody>
@@ -56,6 +72,15 @@ function AdminDashboard() {
                   <td className="px-4 py-2">{b.date}</td>
                   <td className="px-4 py-2">{b.time}</td>
                   <td className="px-4 py-2 capitalize">{b.status}</td>
+                  <td className="px-4 py-2 text-right">
+                    <button
+                      onClick={() => setPendingCancelId(b.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors text-xs cursor-pointer"
+                      title="Cancel booking"
+                    >
+                      ✕
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -91,6 +116,15 @@ function AdminDashboard() {
           </ul>
         )}
       </section>
+
+      {pendingBooking && (
+        <ConfirmDialog
+          message={`Cancel ${pendingBooking.customerName}'s booking on ${pendingBooking.date} at ${pendingBooking.time}? This cannot be undone.`}
+          confirmLabel="Cancel Booking"
+          onConfirm={() => handleCancelBooking(pendingBooking.id)}
+          onCancel={() => setPendingCancelId(null)}
+        />
+      )}
     </main>
   )
 }

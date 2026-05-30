@@ -3,19 +3,19 @@ import TestimonialCard from './TestimonialCard'
 
 const TESTIMONIALS = [
   {
-    name: 'Sarah M.',
-    text: "The best sauna experience I've had. Spotless facility, peaceful atmosphere, and totally rejuvenating.",
+    name: 'Erin C.',
+    text: "Hiked up Ben Nevis and went for the best sauna afterwards, perfect evening to complete the day.",
     rating: 5,
   },
   {
-    name: 'James T.',
-    text: "Booked the couples package for our anniversary. Perfect evening from start to finish. Highly recommend!",
+    name: 'Jonathan E',
+    text: "Went with with my family and had a great experience. Great value for money.",
     rating: 5,
   },
   {
     name: 'Priya K.',
-    text: "Great value for money. The team was friendly and the online booking process was super easy.",
-    rating: 4,
+    text: "The team was friendly and the online booking process was super easy.",
+    rating: 5,
   },
 ]
 

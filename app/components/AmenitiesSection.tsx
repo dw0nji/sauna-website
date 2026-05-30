@@ -4,7 +4,7 @@ import AmenityCard from './AmenityCard'
 const AMENITIES = [
   {
     name: 'Finnish Sauna',
-    url: '/fireplace.jpeg',
+    url: '/sauna_inside.jpeg',
     description:
       'A classic wood-lined Finnish sauna that reaches up to 90°C. Bench seating for up to six guests, built from kiln-dried Nordic spruce.',
   },
