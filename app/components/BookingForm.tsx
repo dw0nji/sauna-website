@@ -1,14 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import SectionWrapper from './SectionWrapper'
 import FormField from './FormField'
 import { useBooking } from './BookingProvider'
 import { Booking, TimeSlot } from './models/Booker'
+import { Package } from '../lib/packages'
 
+const CheckoutModal = dynamic(() => import('./CheckoutModal'), { ssr: false })
 
 const INPUT =
-  'w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400'
+  'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition'
 
 type FormData = {
   name: string
@@ -18,6 +21,7 @@ type FormData = {
   time: string
   guests: string
   notes: string
+  duration: number
 }
 
 const EMPTY: FormData = {
@@ -28,59 +32,86 @@ const EMPTY: FormData = {
   time: '',
   guests: '1',
   notes: '',
+  duration:0
 }
 
-export default function BookingForm() {
+type Props = {
+  selectedPackage: Package | null
+}
+
+export default function BookingForm({ selectedPackage }: Props) {
   const [form, setForm] = useState<FormData>(EMPTY)
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [slotLoad, setSlotLoad] = useState(false)
   const [timeslots, setTimeslots] = useState<TimeSlot[]>([])
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [price, setPrice] = useState<number | null>(null)
+
   const { controller } = useBooking()
+
+  useEffect(() => {
+    calculatePrice()
+  }, [selectedPackage])
+
+  const createBookingFromSession = useCallback(async () => {
+    if (!controller) return
+    const raw = sessionStorage.getItem('pending_booking')
+    if (!raw) return
+
+    try {
+      const { booking, durationMinutes } = JSON.parse(raw) as { booking: Booking; slotId: number; durationMinutes: number }
+      await controller.createBooking(booking)
+      await controller.cancelRelatedTimeSlots(booking.date, booking.time, durationMinutes ?? 60)
+      sessionStorage.removeItem('pending_booking')
+      setForm({
+        name: booking.customerName,
+        email: booking.customerEmail,
+        phone: booking.customerPhone,
+        date: booking.date,
+        time: booking.time,
+        guests: '1',
+        notes: '',
+        duration: 0,
+      })
+      setSubmitted(true)
+      window.history.replaceState({}, '', window.location.pathname)
+    } catch {
+      sessionStorage.removeItem('pending_booking')
+    }
+  }, [controller])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('payment_success') === 'true') {
+      createBookingFromSession()
+    }
+  }, [createBookingFromSession])
+
+  function calculatePrice(){
+    if (selectedPackage) {
+      const price = (selectedPackage.price * Number(form.guests)) / 100
+      console.log(price)
+      setPrice(Math.min(price,65))
+    } else {
+      setPrice(null)
+    }
+
+  }
+  function handleGuestChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) {
+    handleChange(e)
+    if (!selectedPackage) return
+    setPrice(Math.min((selectedPackage.price * Number(e.target.value)) / 100,65))
+  }
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
-  }
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (!controller) return
-
-    setSubmitting(true)
-    setSubmitError(null)
-
-    const booking: Booking = {
-      id: Date.now(),
-      date: form.date,
-      time: form.time,
-      status: 'confirmed',
-      customerName: form.name,
-      customerEmail: form.email,
-      customerPhone: form.phone,
-    }
-
-    try {
-      const slot = timeslots.find((slot)=>{
-        if (slot.time === form.time && slot.date === form.date){
-          return slot
-        }
-      })
-      if (slot){
-        await controller.createBooking(booking)
-        await controller.cancelTimeSlot(slot.id)
-      }else{
-        throw new Error('There was a problem processing your booking.')
-      }
-      setSubmitted(true)
-    } catch (err) {
-      setSubmitError((err as Error).message)
-    } finally {
-      setSubmitting(false)
-    }
   }
 
   function handleAvailability(
@@ -90,19 +121,68 @@ export default function BookingForm() {
     setSlotLoad(true)
     try {
       const slots = controller?.getAvailableTimeSlots(e.target.value)
-      setTimeslots(slots ??  [])
+      setTimeslots(slots ?? [])
     } finally {
       setSlotLoad(false)
     }
   }
 
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!controller || !selectedPackage) return
+
+    setSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      const slot = timeslots.find((s) => s.time === form.time && s.date === form.date)
+      if (!slot) throw new Error('There was a problem processing your booking.')
+
+      const booking: Booking = {
+        id: Date.now(),
+        date: form.date,
+        time: form.time,
+        status: 'confirmed',
+        customerName: form.name,
+        customerEmail: form.email,
+        customerPhone: form.phone,
+      }
+
+      const durationMinutes = Math.round(parseFloat(selectedPackage.duration) * 60)
+      sessionStorage.setItem('pending_booking', JSON.stringify({ booking, slotId: slot.id, durationMinutes }))
+
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          packageId:selectedPackage.id,
+          amount:form.guests
+        }),
+      })
+
+      if (!res.ok) throw new Error('Failed to create checkout session.')
+      const { clientSecret } = await res.json()
+      setClientSecret(clientSecret)
+    } catch (err) {
+      setSubmitError((err as Error).message)
+      sessionStorage.removeItem('pending_booking')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   if (submitted) {
     return (
-      <SectionWrapper id="booking" title="Booking Received!">
+      <SectionWrapper id="booking" title="Booking Confirmed!">
         <div className="max-w-lg mx-auto text-center">
+          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-amber-600" viewBox="0 0 24 24" fill="none">
+              <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
           <p className="text-gray-600 mb-6">
-            Thanks, <strong>{form.name}</strong>! We'll send a confirmation to{' '}
-            <strong>{form.email}</strong> shortly.
+            Thanks, <strong>{form.name}</strong>! Your payment was successful and we've reserved your
+            slot. A confirmation will be sent to <strong>{form.email}</strong> shortly.
           </p>
           <button
             className="text-sm text-gray-500 underline hover:text-gray-800 cursor-pointer"
@@ -116,116 +196,205 @@ export default function BookingForm() {
   }
 
   return (
-    <SectionWrapper
-      id="booking"
-      title="Book a Session"
-      subtitle="Reserve the sauna for your group — includes the cold plunge and firepit."
-    >
-      <form
-        onSubmit={handleSubmit}
-        className="max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-6"
+    <>
+      <SectionWrapper
+        id="booking"
+        title="Book a Session"
+        subtitle="Reserve the sauna for your group — includes the cold plunge and firepit."
       >
-        <FormField label="Full Name">
-          <input
-            className={INPUT}
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            required
-            placeholder="Jane Smith"
-          />
-        </FormField>
+        {selectedPackage && (
+          <div className="max-w-2xl mx-auto mb-8 flex items-center justify-between shadow-amber-50 shadow-2xl border-2 border-black  px-5 py-4">
+            <div>
+              <p className="text-xs text-amber-600 font-semibold uppercase tracking-widest">Selected Package</p>
+              <p className="font-bold text-gray-900 text-lg">{selectedPackage.name}</p>
+              <p className="text-sm text-gray-500">{selectedPackage.duration} · Up to {selectedPackage.maxGuests} guests</p>
+            </div>
+            <div className="text-right">
+              {(() => {
+                const full = selectedPackage ? (selectedPackage.price * Number(form.guests)) / 100 : null
+                const discount = full !== null && full > 65 ? +(full - 65).toFixed(2) : 0
+                return (
+                  <>
+                    <div className="flex items-baseline justify-end gap-2">
+                      {discount > 0 && (
+                        <span className="text-sm text-gray-400 line-through">£{full?.toFixed(2)}</span>
+                      )}
+                      <p className="text-3xl font-black text-gray-900">£{price?.toFixed(2)}</p>
+                    </div>
+                    {discount > 0 && (
+                      <span className="inline-block mt-1 bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                        You save £{discount.toFixed(2)}
+                      </span>
+                    )}
+                  </>
+                )
+              })()}
+              <button
+                type="button"
+                onClick={() => document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' })}
+                className="block text-xs text-amber-600 hover:text-amber-800 underline mt-1 cursor-pointer ml-auto"
+              >
+                Change
+              </button>
+            </div>
+          </div>
+        )}
 
-        <FormField label="Email">
-          <input
-            className={INPUT}
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={handleChange}
-            required
-            placeholder="jane@example.com"
-          />
-        </FormField>
+        {!selectedPackage && (
+          <div className="max-w-2xl mx-auto mb-8 flex items-center gap-4 bg-gray-50 border border-dashed border-gray-300 rounded-xl px-5 py-4">
+            <div className="w-10 h-10 rounded-full bg-amber-100 shrink-0 flex items-center justify-center">
+              <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-800">No package selected</p>
+              <button
+                type="button"
+                onClick={() => document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' })}
+                className="text-sm text-amber-600 hover:text-amber-800 underline cursor-pointer"
+              >
+                Choose a package above to continue
+              </button>
+            </div>
+          </div>
+        )}
 
-        <FormField label="Phone">
-          <input
-            className={INPUT}
-            name="phone"
-            type="tel"
-            value={form.phone}
-            onChange={handleChange}
-            placeholder="+1 555 0100"
-          />
-        </FormField>
+        <form
+          onSubmit={handleSubmit}
+          className="max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-6"
+        >
+          <FormField label="Full Name">
+            <input
+              className={INPUT}
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              required
+              placeholder="Jane Smith"
+            />
+          </FormField>
 
-        <FormField label="Number of Guests">
-          <input
-            className={INPUT}
-            name="guests"
-            type="number"
-            min="1"
-            max="6"
-            value={form.guests}
-            onChange={handleChange}
-            required
-          />
-        </FormField>
+          <FormField label="Email">
+            <input
+              className={INPUT}
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+              required
+              placeholder="jane@example.com"
+            />
+          </FormField>
 
-        <FormField label="Preferred Date">
-          <input
-            className={INPUT}
-            name="date"
-            type="date"
-            value={form.date}
-            onChange={handleAvailability}
-            required
-          />
-        </FormField>
+          <FormField label="Phone">
+            <input
+              className={INPUT}
+              name="phone"
+              type="tel"
+              value={form.phone}
+              onChange={handleChange}
+              placeholder="+44 7700 900100"
+            />
+          </FormField>
 
-        <FormField label="Preferred Time">
-          <select
-            className={INPUT}
-            name="time"
-            value={form.time}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select a time</option>
-            {timeslots.length > 0 ? timeslots.map((t) => (
-              <option key={t.id} value={t.time}>
-                {t.time}
+          <FormField label="Number of Guests">
+            <input
+              className={INPUT}
+              name="guests"
+              type="number"
+              min="1"
+              max={selectedPackage?.maxGuests ?? 6}
+              value={form.guests}
+              onChange={handleGuestChange}
+              required
+            />
+            {selectedPackage && (
+              <p className="text-xs text-gray-400 mt-1">Max {selectedPackage.maxGuests} for this package</p>
+            )}
+          </FormField>
+
+          <FormField label="Preferred Date">
+            <input
+              className={INPUT}
+              name="date"
+              type="date"
+              value={form.date}
+              onChange={handleAvailability}
+              required
+            />
+          </FormField>
+
+          <FormField label="Preferred Time">
+            <select
+              className={INPUT}
+              name="time"
+              value={form.time}
+              onChange={handleChange}
+              required
+            >
+              <option value="">
+                {slotLoad ? 'Loading...' : 'Select a time'}
               </option>
-            )):
-            <option disabled={true}>There is no availability on this date</option>
-            }
-          </select>
-        </FormField>
+              {timeslots.length > 0
+                ? timeslots.map((t) => (
+                    <option key={t.id} value={t.time}>
+                      {t.time}
+                    </option>
+                  ))
+                : form.date
+                  ? <option disabled>No availability on this date</option>
+                  : null
+              }
+            </select>
+          </FormField>
 
-        <FormField label="Special Requests" className="sm:col-span-2">
-          <textarea
-            className={INPUT}
-            name="notes"
-            value={form.notes}
-            onChange={handleChange}
-            rows={3}
-            placeholder="Accessibility needs, allergies, or anything else we should know..."
-          />
-        </FormField>
+          <FormField label="Special Requests" className="sm:col-span-2">
+            <textarea
+              className={INPUT}
+              name="notes"
+              value={form.notes}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Accessibility needs, allergies, or anything else we should know..."
+            />
+          </FormField>
 
-        <div className="sm:col-span-2">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-gray-900 text-white py-3 rounded font-medium hover:bg-gray-700 transition-colors cursor-pointer disabled:opacity-50"
-          >
-            {submitting ? 'Booking...' : 'Request Booking'}
-          </button>
-          {submitError && (
-            <p className="mt-3 text-sm text-red-500">{submitError}</p>
-          )}
-        </div>
-      </form>
-    </SectionWrapper>
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              disabled={submitting || !selectedPackage}
+              className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {submitting ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Preparing checkout…
+                </>
+              ) : (
+                <>
+                  {selectedPackage ? `Pay £${price} & Confirm` : 'Select a Package Above'}
+                  {selectedPackage && (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  )}
+                </>
+              )}
+            </button>
+            {submitError && (
+              <p className="mt-3 text-sm text-red-500">{submitError}</p>
+            )}
+          </div>
+        </form>
+      </SectionWrapper>
+
+      {clientSecret && (
+        <CheckoutModal
+          clientSecret={clientSecret}
+          onClose={() => setClientSecret(null)}
+        />
+      )}
+    </>
   )
 }

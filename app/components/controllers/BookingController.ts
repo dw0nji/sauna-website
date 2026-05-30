@@ -60,6 +60,28 @@ export default class BookingController {
     }
   }
 
+  async cancelRelatedTimeSlots(date: string, startTime: string, durationMinutes: number): Promise<void> {
+    const toMins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+    const startMins = toMins(startTime)
+    const blockStart = startMins - 30
+    const blockEnd   = startMins + durationMinutes + 60
+
+    const idsToCancel = this.booker.timeslots
+      .filter(s => s.date === date && toMins(s.time) >= blockStart && toMins(s.time) < blockEnd)
+      .map(s => s.id)
+
+    if (idsToCancel.length === 0) return
+
+    idsToCancel.forEach(id => this.booker.cancelTimeSlot(id))
+
+    const snap = await getDocs(collection(db, 'timeslots'))
+    await Promise.all(
+      snap.docs
+        .filter(d => idsToCancel.includes(d.data().id))
+        .map(d => updateDoc(doc(db, 'timeslots', d.id), { isAvailable: false }))
+    )
+  }
+
   getAvailableTimeSlots(date?: string): TimeSlot[] {
     return this.booker.getAvailableTimeSlots(date)
   }
