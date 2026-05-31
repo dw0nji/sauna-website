@@ -5,6 +5,7 @@ import { BookingProvider, useBooking } from '../../components/BookingProvider'
 import CreateTimeSlotForm from '../../components/CreateTimeSlotForm'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import type { Booking, TimeSlot } from '../../components/models/Booker'
+import { PACKAGES } from '../../lib/packages'
 
 function AdminDashboard() {
   const { controller, loading, error } = useBooking()
@@ -59,6 +60,7 @@ function AdminDashboard() {
                 <tr>
                   <th className="px-4 py-2 font-medium whitespace-nowrap">Name</th>
                   <th className="px-4 py-2 font-medium whitespace-nowrap">Email</th>
+                  <th className="px-4 py-2 font-medium whitespace-nowrap">Package</th>
                   <th className="px-4 py-2 font-medium whitespace-nowrap">Date</th>
                   <th className="px-4 py-2 font-medium whitespace-nowrap">Time</th>
                   <th className="px-4 py-2 font-medium whitespace-nowrap">Status</th>
@@ -70,17 +72,23 @@ function AdminDashboard() {
                   <tr key={b.id} className="border-t border-gray-100">
                     <td className="px-4 py-2 whitespace-nowrap">{b.customerName}</td>
                     <td className="px-4 py-2 whitespace-nowrap">{b.customerEmail}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {PACKAGES.find((p) => p.id === b.PackageName)?.name ?? b.PackageName ?? '—'}
+                    </td>
                     <td className="px-4 py-2 whitespace-nowrap">{b.date}</td>
                     <td className="px-4 py-2 whitespace-nowrap">{b.time}</td>
                     <td className="px-4 py-2 capitalize whitespace-nowrap">{b.status}</td>
                     <td className="px-4 py-2 text-right">
+                      {b.status == 'confirmed' ?
                       <button
                         onClick={() => setPendingCancelId(b.id)}
                         className="text-gray-400 hover:text-red-500 transition-colors text-xs cursor-pointer"
                         title="Cancel booking"
                       >
                         ✕
-                      </button>
+                      </button>:
+                      <></>
+                    }
                     </td>
                   </tr>
                 ))}
@@ -103,12 +111,25 @@ function AdminDashboard() {
             {slots.map((s) => (
               <li
                 key={s.id}
-                className="flex items-center justify-between border border-gray-200 rounded px-3 py-2 text-sm"
+                className="flex items-start justify-between border border-gray-200 rounded px-3 py-2 text-sm"
               >
-                <span>{s.date} — {s.time}</span>
+                <div>
+                  <span>{s.date} — {s.time}</span>
+                  {s.allowedPackages?.length ? (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {s.allowedPackages.map((id) => (
+                        <span key={id} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                          {PACKAGES.find((p) => p.id === id)?.name ?? id}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 mt-0.5">All packages</p>
+                  )}
+                </div>
                 <button
                   onClick={() => handleCancelSlot(s.id)}
-                  className="ml-2 text-gray-400 hover:text-red-500 transition-colors text-xs cursor-pointer"
+                  className="ml-2 text-gray-400 hover:text-red-500 transition-colors text-xs cursor-pointer mt-0.5 shrink-0"
                   title="Cancel slot"
                 >
                   ✕

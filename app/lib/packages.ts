@@ -1,9 +1,12 @@
+
+export type PackageType = 'short' | 'long' | 'highland' 
+
 export type Package = {
-  id: string
+  id: PackageType
   name: string
   price: number
   displayPrice: string
-  duration: string
+  duration: number
   maxGuests: number
   description: string
   features: string[]
@@ -12,11 +15,11 @@ export type Package = {
 
 export const PACKAGES: Package[] = [
   {
-    id: 'short',
+    id: 'short' ,
     name: 'Standard Session',
     price: 1500,
     displayPrice: '£15',
-    duration: '1 Hour',
+    duration: 1,
     maxGuests: 8,
     description: 'A quiet escape - the perfect amount of time for the average person!',
     features: [
@@ -29,7 +32,7 @@ export const PACKAGES: Package[] = [
     name: 'Long Session',
     price: 2000,
     displayPrice: '£20',
-    duration: '1.5 Hours',
+    duration: 1.5,
     maxGuests: 8,
     description: 'Great value for money',
     features: [
@@ -43,7 +46,7 @@ export const PACKAGES: Package[] = [
     name: 'Highland Experience',
     price: 2500,
     displayPrice: '£25',
-    duration: '3 Hours',
+    duration: 3,
     maxGuests: 8,
     description: 'social events',
     features: [

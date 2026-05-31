@@ -6,7 +6,7 @@ import SectionWrapper from './SectionWrapper'
 import FormField from './FormField'
 import { useBooking } from './BookingProvider'
 import { Booking, TimeSlot } from './models/Booker'
-import { Package } from '../lib/packages'
+import { Package, PackageType } from '../lib/packages'
 
 const CheckoutModal = dynamic(() => import('./CheckoutModal'), { ssr: false })
 
@@ -21,7 +21,6 @@ type FormData = {
   time: string
   guests: string
   notes: string
-  duration: number
 }
 
 const EMPTY: FormData = {
@@ -32,7 +31,6 @@ const EMPTY: FormData = {
   time: '',
   guests: '1',
   notes: '',
-  duration:0
 }
 
 type Props = {
@@ -57,14 +55,19 @@ export default function BookingForm({ selectedPackage }: Props) {
 
   const createBookingFromSession = useCallback(async () => {
     if (!controller) return
-    const raw = sessionStorage.getItem('pending_booking')
+    const raw = localStorage.getItem('pending_booking')
     if (!raw) return
+    console.log('processing booking')
 
     try {
       const { booking, durationMinutes } = JSON.parse(raw) as { booking: Booking; slotId: number; durationMinutes: number }
+      console.log('creating booking', booking)
       await controller.createBooking(booking)
-      await controller.cancelRelatedTimeSlots(booking.date, booking.time, durationMinutes ?? 60)
-      sessionStorage.removeItem('pending_booking')
+      console.log('removing taken timeslots')
+      await controller.cancelRelatedTimeSlots(booking.date, booking.time, durationMinutes)
+      localStorage.removeItem('pending_booking')
+      setSubmitted(true);
+      console.log('setting submitted')
       setForm({
         name: booking.customerName,
         email: booking.customerEmail,
@@ -73,12 +76,12 @@ export default function BookingForm({ selectedPackage }: Props) {
         time: booking.time,
         guests: '1',
         notes: '',
-        duration: 0,
       })
       setSubmitted(true)
       window.history.replaceState({}, '', window.location.pathname)
-    } catch {
-      sessionStorage.removeItem('pending_booking')
+    } catch(err) {
+      console.error(err)
+      localStorage.removeItem('pending_booking')
     }
   }, [controller])
 
@@ -114,14 +117,27 @@ export default function BookingForm({ selectedPackage }: Props) {
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
+  function filterSlotsByPackage(slots: TimeSlot[], pkg: Package | null): TimeSlot[] {
+    if (!pkg) return []
+    return slots.filter(
+      (s) => !s.allowedPackages?.length || s.allowedPackages.includes(pkg.id as PackageType)
+    )
+  }
+
+  useEffect(() => {
+    if (!form.date || !controller) return
+    const all = controller.getAvailableTimeSlots(form.date)
+    setTimeslots(filterSlotsByPackage(all, selectedPackage))
+  }, [selectedPackage])
+
   function handleAvailability(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
     handleChange(e)
     setSlotLoad(true)
     try {
-      const slots = controller?.getAvailableTimeSlots(e.target.value)
-      setTimeslots(slots ?? [])
+      const all = controller?.getAvailableTimeSlots(e.target.value) ?? []
+      setTimeslots(filterSlotsByPackage(all, selectedPackage))
     } finally {
       setSlotLoad(false)
     }
@@ -143,13 +159,14 @@ export default function BookingForm({ selectedPackage }: Props) {
         date: form.date,
         time: form.time,
         status: 'confirmed',
+        PackageName: selectedPackage.id as PackageType,
         customerName: form.name,
         customerEmail: form.email,
         customerPhone: form.phone,
       }
 
-      const durationMinutes = Math.round(parseFloat(selectedPackage.duration) * 60)
-      sessionStorage.setItem('pending_booking', JSON.stringify({ booking, slotId: slot.id, durationMinutes }))
+      const durationMinutes = Math.round(selectedPackage.duration * 60)
+      localStorage.setItem('pending_booking', JSON.stringify({ booking, slotId: slot.id, durationMinutes }))
 
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
@@ -165,7 +182,7 @@ export default function BookingForm({ selectedPackage }: Props) {
       setClientSecret(clientSecret)
     } catch (err) {
       setSubmitError((err as Error).message)
-      sessionStorage.removeItem('pending_booking')
+      localStorage.removeItem('pending_booking')
     } finally {
       setSubmitting(false)
     }
@@ -207,7 +224,7 @@ export default function BookingForm({ selectedPackage }: Props) {
             <div>
               <p className="text-xs text-amber-600 font-semibold uppercase tracking-widest">Selected Package</p>
               <p className="font-bold text-gray-900 dark:text-white text-lg">{selectedPackage.name}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{selectedPackage.duration} · Up to {selectedPackage.maxGuests} guests</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{selectedPackage.duration} hr{selectedPackage.duration !== 1 ? 's' : ''} · Up to {selectedPackage.maxGuests} guests</p>
             </div>
             <div className="text-right">
               {(() => {
@@ -336,6 +353,8 @@ export default function BookingForm({ selectedPackage }: Props) {
               <option value="">
                 {slotLoad ? 'Loading...' : 'Select a time'}
               </option>
+              {!selectedPackage ? <option disabled>Please select a package to view times</option> :
+              <>
               {timeslots.length > 0
                 ? timeslots.map((t) => (
                     <option key={t.id} value={t.time}>
@@ -345,7 +364,7 @@ export default function BookingForm({ selectedPackage }: Props) {
                 : form.date
                   ? <option disabled>No availability on this date</option>
                   : null
-              }
+              }</>}
             </select>
           </FormField>
 

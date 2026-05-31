@@ -1,8 +1,11 @@
+import { PackageType } from "@/app/lib/packages";
+
 interface Booking {
     id: number;
     date: string;
     time: string;
     status: 'confirmed' | 'cancelled';
+    PackageName:PackageType;
     customerName: string;
     customerEmail: string;
     customerPhone: string;
@@ -13,6 +16,7 @@ interface TimeSlot {
     date: string;
     time: string;
     isAvailable: boolean;
+    allowedPackages?: PackageType[];
 }
 
 interface Dictionary<T> {
@@ -34,6 +38,9 @@ class Booker {
     }
 
     createBooking(booking: Booking): void {
+        console.log(this.timeslots)
+        console.log(booking)
+
         const slot = this.timeslots.find(
             (s) => s.date === booking.date && s.time === booking.time
         );
@@ -41,6 +48,12 @@ class Booker {
         if (!slot || !slot.isAvailable) {
             throw new Error(
                 `Time slot ${booking.date} at ${booking.time} is not available.`
+            );
+        }
+
+        if (slot.allowedPackages?.length && !slot.allowedPackages.includes(booking.PackageName)) {
+            throw new Error(
+                `Package "${booking.PackageName}" is not available for this time slot.`
             );
         }
 
@@ -69,14 +82,13 @@ class Booker {
         });
     }
 
-    cancelTimeSlot(timeslotId: number): void {
-        const slot = this.timeslots.find((s) => s.id === timeslotId);
+    deleteTimeSlot(timeslotId: number): void {
+        const exists = this.timeslots.some((s) => s.id === timeslotId);
 
-        if (!slot) {
+        if (!exists) {
             throw new Error(`Time slot ${timeslotId} not found.`);
         }
-
-        slot.isAvailable = false;
+        this.timeslots = this.timeslots.filter((s) => s.id !== timeslotId);
     }
 
     cancelBooking(bookingId: number): void {
@@ -90,7 +102,7 @@ class Booker {
 
         this.cancelledBookings.push(booking);
 
-        delete this.allBookings[bookingId];
+        //delete this.allBookings[bookingId];
 
         const slot = this.timeslots.find(
             (s) => s.date === booking.date && s.time === booking.time

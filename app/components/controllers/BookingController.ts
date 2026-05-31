@@ -48,20 +48,35 @@ export default class BookingController {
 
   async createTimeSlot(timeslot: TimeSlot): Promise<void> {
     this.booker.createAvailableTimeSlot(timeslot)
-    await addDoc(collection(db, 'timeslots'), { ...timeslot, isAvailable: true })
+    const data = {
+      ...timeslot,
+      isAvailable: true,
+      allowedPackages:
+        timeslot.allowedPackages === undefined ? ['long', 'short', 'highland']: timeslot.allowedPackages,
+    }
+    await addDoc(collection(db, 'timeslots'), data)
   }
 
   async cancelTimeSlot(timeslotId: number): Promise<void> {
-    this.booker.cancelTimeSlot(timeslotId)
+    this.booker.deleteTimeSlot(timeslotId)
     const snap = await getDocs(collection(db, 'timeslots'))
     const match = snap.docs.find((d) => d.data().id === timeslotId)
     if (match) {
-      await updateDoc(doc(db, 'timeslots', match.id), { isAvailable: false })
+      await deleteDoc(doc(db, 'timeslots', match.id))
     }
   }
 
   async cancelRelatedTimeSlots(date: string, startTime: string, durationMinutes: number): Promise<void> {
-    const toMins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+    const toMins = (t: string) => {
+      const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i)
+      if (!match) return 0
+      let h = parseInt(match[1])
+      const m = parseInt(match[2])
+      const isPM = match[3].toUpperCase() === 'PM'
+      if (isPM && h !== 12) h += 12
+      if (!isPM && h === 12) h = 0
+      return h * 60 + m
+    }
     const startMins = toMins(startTime)
     const blockStart = startMins - 30
     const blockEnd   = startMins + durationMinutes + 60
@@ -72,13 +87,13 @@ export default class BookingController {
 
     if (idsToCancel.length === 0) return
 
-    idsToCancel.forEach(id => this.booker.cancelTimeSlot(id))
+    idsToCancel.forEach(id => this.booker.deleteTimeSlot(id))
 
     const snap = await getDocs(collection(db, 'timeslots'))
     await Promise.all(
       snap.docs
         .filter(d => idsToCancel.includes(d.data().id))
-        .map(d => updateDoc(doc(db, 'timeslots', d.id), { isAvailable: false }))
+        .map(d => deleteDoc(doc(db, 'timeslots', d.id)))
     )
   }
 

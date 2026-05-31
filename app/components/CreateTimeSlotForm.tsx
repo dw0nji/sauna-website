@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useBooking } from './BookingProvider'
 import FormField from './FormField'
 import { Booking } from './models/Booker'
+import { PACKAGES, PackageType } from '../lib/packages'
 
 const TIME_SLOTS = [
   '9:00 AM',
@@ -43,8 +44,15 @@ export default function CreateTimeSlotForm({bookings, onCreated }: {bookings: Bo
   const { controller } = useBooking()
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
+  const [allowedPackages, setAllowedPackages] = useState<PackageType[]>([])
   const [status, setStatus] = useState<Status>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  function togglePackage(id: PackageType) {
+    setAllowedPackages((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    )
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -57,7 +65,7 @@ export default function CreateTimeSlotForm({bookings, onCreated }: {bookings: Bo
       const doubleBooking = bookings.find((b)=>{
         console.log(b.date + ' compared to ' + date + ' and ' + b.time + ' compared to ' + time)
         console.log(b.date == date && b.time == time)
-        if(b.date == date && b.time == time){
+        if(b.date == date && b.time == time && b.status == 'confirmed'){
           return b
         }
 
@@ -72,10 +80,12 @@ export default function CreateTimeSlotForm({bookings, onCreated }: {bookings: Bo
         date,
         time,
         isAvailable: true,
+        allowedPackages: allowedPackages.length ? allowedPackages : undefined,
       })
       setStatus({ type: 'success', message: `Slot added: ${date} at ${time}` })
       setDate('')
       setTime('')
+      setAllowedPackages([])
       onCreated?.()
     } catch (err) {
       setStatus({ type: 'error', message: (err as Error).message })
@@ -111,6 +121,35 @@ export default function CreateTimeSlotForm({bookings, onCreated }: {bookings: Bo
             ))}
           </select>
         </FormField>
+
+        <div className="sm:col-span-3">
+          <p className="text-xs font-medium text-gray-600 mb-2">
+            Allowed Packages <span className="text-gray-400 font-normal">(leave all unchecked to allow any)</span>
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {PACKAGES.map((pkg) => {
+              const checked = allowedPackages.includes(pkg.id)
+              return (
+                <label
+                  key={pkg.id}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded border text-sm cursor-pointer select-none transition-colors ${
+                    checked
+                      ? 'border-gray-800 bg-gray-900 text-white'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-gray-500'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="hidden"
+                    checked={checked}
+                    onChange={() => togglePackage(pkg.id)}
+                  />
+                  {pkg.name}
+                </label>
+              )
+            })}
+          </div>
+        </div>
 
         <button
           type="submit"
