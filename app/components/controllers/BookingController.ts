@@ -52,7 +52,7 @@ export default class BookingController {
       ...timeslot,
       isAvailable: true,
       allowedPackages:
-        timeslot.allowedPackages === undefined ? ['long', 'short', 'highland']: timeslot.allowedPackages,
+        timeslot.allowedPackages === undefined ? ['long', 'short', 'highland'] : timeslot.allowedPackages,
     }
     await addDoc(collection(db, 'timeslots'), data)
   }
@@ -81,24 +81,38 @@ export default class BookingController {
     const blockStart = startMins - 30
     const blockEnd   = startMins + durationMinutes + 60
 
-    const idsToCancel = this.booker.timeslots
+    const slotsInWindow = this.booker.timeslots
       .filter(s => s.date === date && toMins(s.time) >= blockStart && toMins(s.time) < blockEnd)
+
+    const idsToDelete = slotsInWindow
+      .filter(s => s.time !== startTime)
       .map(s => s.id)
 
-    if (idsToCancel.length === 0) return
-
-    idsToCancel.forEach(id => this.booker.deleteTimeSlot(id))
+    idsToDelete.forEach(id => {this.booker.deleteTimeSlot(id)})
 
     const snap = await getDocs(collection(db, 'timeslots'))
     await Promise.all(
       snap.docs
-        .filter(d => idsToCancel.includes(d.data().id))
-        .map(d => deleteDoc(doc(db, 'timeslots', d.id)))
+        .filter(d => {
+          const data = d.data()
+          return data.date === date && (idsToDelete.includes(data.id) || data.time === startTime)
+        })
+        .map(d =>
+          d.data().time === startTime && d.data().date === date
+            ? updateDoc(doc(db, 'timeslots', d.id), { isAvailable: false })
+            : deleteDoc(doc(db, 'timeslots', d.id))
+        )
     )
   }
 
   getAvailableTimeSlots(date?: string): TimeSlot[] {
     return this.booker.getAvailableTimeSlots(date)
+  }
+
+  getUnavailableTimeSlots(date?: string): TimeSlot[] {
+    return this.booker.timeslots.filter(
+      (s) => !s.isAvailable && (!date || s.date === date)
+    )
   }
 
   getBooking(bookingId: number): Booking | undefined {

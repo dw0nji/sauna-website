@@ -79,6 +79,7 @@ export default function BookingForm({ selectedPackage }: Props) {
       })
       setSubmitted(true)
       window.history.replaceState({}, '', window.location.pathname)
+      window.location.href = '#booking'
     } catch(err) {
       console.error(err)
       localStorage.removeItem('pending_booking')
@@ -117,17 +118,39 @@ export default function BookingForm({ selectedPackage }: Props) {
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  function filterSlotsByPackage(slots: TimeSlot[], pkg: Package | null): TimeSlot[] {
+  function filterSlotsByPackage(slots: TimeSlot[], pkg: Package | null, unavailableSlots: TimeSlot[]): TimeSlot[] {
     if (!pkg) return []
-    return slots.filter(
-      (s) => !s.allowedPackages?.length || s.allowedPackages.includes(pkg.id as PackageType)
-    )
+
+    const toMins = (t: string) => {
+      const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i)
+      if (!match) return 0
+      let h = parseInt(match[1])
+      const m = parseInt(match[2])
+      const isPM = match[3].toUpperCase() === 'PM'
+      if (isPM && h !== 12) h += 12
+      if (!isPM && h === 12) h = 0
+      return h * 60 + m
+    }
+
+    const durationMins = Math.round(pkg.duration * 60)
+
+    return slots.filter((s) => {
+      if (s.allowedPackages?.length && !s.allowedPackages.includes(pkg.id as PackageType)) return false
+      const slotMins = toMins(s.time)
+      const blockStart = slotMins - 30
+      const blockEnd = slotMins + durationMins + 60
+      return !unavailableSlots.some((u) => {
+        const uMins = toMins(u.time)
+        return uMins >= blockStart && uMins < blockEnd
+      })
+    })
   }
 
   useEffect(() => {
     if (!form.date || !controller) return
     const all = controller.getAvailableTimeSlots(form.date)
-    setTimeslots(filterSlotsByPackage(all, selectedPackage))
+    const unavailable = controller.getUnavailableTimeSlots(form.date)
+    setTimeslots(filterSlotsByPackage(all, selectedPackage, unavailable))
   }, [selectedPackage])
 
   function handleAvailability(
@@ -137,7 +160,8 @@ export default function BookingForm({ selectedPackage }: Props) {
     setSlotLoad(true)
     try {
       const all = controller?.getAvailableTimeSlots(e.target.value) ?? []
-      setTimeslots(filterSlotsByPackage(all, selectedPackage))
+      const unavailable = controller?.getUnavailableTimeSlots(e.target.value) ?? []
+      setTimeslots(filterSlotsByPackage(all, selectedPackage, unavailable))
     } finally {
       setSlotLoad(false)
     }

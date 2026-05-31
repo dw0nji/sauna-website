@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { BookingProvider, useBooking } from '../../components/BookingProvider'
+import AuthProvider from '../../components/AuthProvider'
 import CreateTimeSlotForm from '../../components/CreateTimeSlotForm'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import type { Booking, TimeSlot } from '../../components/models/Booker'
@@ -154,8 +155,10 @@ function AdminDashboard() {
 
 export default function AdminPage() {
   return (
-    <BookingProvider>
-      <AdminDashboard />
-    </BookingProvider>
+    <AuthProvider>
+      <BookingProvider>
+        <AdminDashboard />
+      </BookingProvider>
+    </AuthProvider>
   )
 }
