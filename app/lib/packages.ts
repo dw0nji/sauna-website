@@ -11,6 +11,7 @@ export type Package = {
   description: string
   features: string[]
   highlight?: boolean
+  backgroundImage?: string
 }
 
 export const PACKAGES: Package[] = [
@@ -41,21 +42,22 @@ export const PACKAGES: Package[] = [
     ],
     highlight: true,
   },
-  {
-    id: 'highland',
-    name: 'Highland Experience',
-    price: 2500,
-    displayPrice: '£25',
-    duration: 3,
-    maxGuests: 8,
-    description: 'social events',
-    features: [
-      'Public sauna session',
-      'Cold plunge access',
-      'Private firepit',
-      'Champaign',
-      'Hot chocolate',
-      'Marshmallows',
-    ],
-  },
+  // {
+  //   id: 'highland',
+  //   name: 'Highland Experience',
+  //   price: 2500,
+  //   displayPrice: '£25',
+  //   duration: 3,
+  //   maxGuests: 8,
+  //   backgroundImage: '/ben_dark.jpeg',
+  //   description: 'social events',
+  //   features: [
+  //     'Public sauna session',
+  //     'Cold plunge access',
+  //     'Private firepit',
+  //     'Champaign',
+  //     'Hot chocolate',
+  //     'Marshmallows',
+  //   ],
+  // },
 ]

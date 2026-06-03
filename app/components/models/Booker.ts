@@ -1,4 +1,4 @@
-import { PackageType } from "@/app/lib/packages";
+import { Package, PackageType } from "@/app/lib/packages";
 
 interface Booking {
     id: number;
@@ -10,7 +10,9 @@ interface Booking {
     customerEmail: string;
     customerPhone: string;
 }
-
+interface SpecialEvent extends Package {
+  timeslotId: number
+}
 interface TimeSlot {
     id: number;
     date: string;
@@ -25,16 +27,51 @@ interface Dictionary<T> {
 
 class Booker {
     timeslots: TimeSlot[];
+    events: SpecialEvent[];
     allBookings: Dictionary<Booking> = {};
     newBookings: number[] = [];
     cancelledBookings: Booking[] = [];
 
-    constructor(timeslots: TimeSlot[], bookings: Booking[]) {
+    constructor(timeslots: TimeSlot[], bookings: Booking[],events: SpecialEvent[]) {
         this.timeslots = timeslots;
+        this.events = events;
 
         bookings.forEach((booking) => {
             this.allBookings[booking.id] = booking;
         });
+    }
+    createEvent(event: SpecialEvent): void {
+        this.events.push(event)
+    }
+    deleteEvent(timeslotId: number): void {
+        this.events = this.events.filter((e) => e.timeslotId !== timeslotId)
+    }
+
+    getNextEvent(): SpecialEvent | null {
+        let shortestEvent: SpecialEvent | null = null;
+        let shortestValue = Infinity;
+
+        this.events.forEach((e) => {
+            const slot = this.timeslots.find((s) => s.id === e.timeslotId);
+            if (!slot) return;
+
+            const match = slot.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if (!match) return;
+            let h = parseInt(match[1]);
+            const m = parseInt(match[2]);
+            const isPM = match[3].toUpperCase() === 'PM';
+            if (isPM && h !== 12) h += 12;
+            if (!isPM && h === 12) h = 0;
+            const iso = `${slot.date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+            const timestamp = new Date(iso).getTime();
+
+            if (timestamp < shortestValue) {
+                shortestValue = timestamp;
+                shortestEvent = e;
+            }
+        });
+
+        return shortestEvent;
     }
 
     createBooking(booking: Booking): void {
@@ -162,5 +199,5 @@ class Booker {
     }
 }
 
-export type { Booking, TimeSlot };
+export type { Booking, TimeSlot, SpecialEvent };
 export default Booker;

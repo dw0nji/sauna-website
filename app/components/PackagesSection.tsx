@@ -2,6 +2,8 @@
 
 import SectionWrapper from './SectionWrapper'
 import { PACKAGES, Package } from '../lib/packages'
+import { useBooking} from './BookingProvider'
+import { useEffect, useState } from 'react'
 
 type Props = {
   selectedPackageId: string | null
@@ -9,6 +11,24 @@ type Props = {
 }
 
 export default function PackagesSection({ selectedPackageId, onSelect }: Props) {
+  const {controller} = useBooking()
+  const [packages, setPackages] = useState<Package[]>(PACKAGES)
+
+  useEffect(() => {
+    if (!controller) return;
+
+    const event = controller.getNextEvent();
+    console.log('Next event:', event);
+    if (!event) return;
+
+    const { timeslotId, ...rest } = event;
+
+    const newPackage = rest as Package;
+    console.log('packages', [...packages, newPackage])
+    setPackages((prev) => [...prev, newPackage]);
+    
+  }, [controller]);
+
   return (
     <SectionWrapper
       id="packages"
@@ -16,7 +36,7 @@ export default function PackagesSection({ selectedPackageId, onSelect }: Props) 
       subtitle="Every package includes exclusive access to the private sauna and the breathtaking Highland views."
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-        {PACKAGES.map((pkg) => {
+        {packages.map((pkg) => {
           const isSelected = selectedPackageId === pkg.id
           return (
             <div
@@ -34,8 +54,14 @@ export default function PackagesSection({ selectedPackageId, onSelect }: Props) 
                   Most Popular
                 </div>
               )}
+              <div className="relative overflow-hidden">
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${pkg.backgroundImage})` }}
+              />
+              <div className={`absolute inset-0 bg-gray-900${pkg.backgroundImage ? '/80': ''}`} />
 
-              <div className="bg-gray-900 text-white p-6 flex flex-col gap-1">
+              <div className=" text-white p-6 flex flex-col gap-1 relative">
                 <span className="text-amber-400 text-xs font-semibold uppercase tracking-widest">
                   {pkg.duration} Hours · Up to {pkg.maxGuests} guests
                 </span>
@@ -45,6 +71,7 @@ export default function PackagesSection({ selectedPackageId, onSelect }: Props) 
                   <span className="text-4xl font-black text-white">{pkg.displayPrice}</span>
                   <span className="text-gray-400 text-sm ml-1">/pp</span>
                 </div>
+              </div>
               </div>
 
               <div className="bg-white dark:bg-gray-800 flex-1 p-6 flex flex-col gap-6">

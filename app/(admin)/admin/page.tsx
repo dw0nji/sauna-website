@@ -6,18 +6,27 @@ import AuthProvider from '../../components/AuthProvider'
 import CreateTimeSlotForm from '../../components/CreateTimeSlotForm'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import type { Booking, TimeSlot } from '../../components/models/Booker'
-import { PACKAGES } from '../../lib/packages'
+import { Package, PACKAGES } from '../../lib/packages'
+import { EventsForm } from '@/app/components/EventsForm'
+import { time } from 'console'
 
 function AdminDashboard() {
   const { controller, loading, error } = useBooking()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [pendingCancelId, setPendingCancelId] = useState<number | null>(null)
-
+  const [packages, setPackages] = useState(PACKAGES)
   useEffect(() => {
     if (!controller) return
     setBookings(controller.getAllBookings())
     setSlots(controller.getAvailableTimeSlots())
+    const event = controller.getNextEvent();
+    if (!event) return;
+    const { timeslotId, ...rest } = event;
+
+    const newPackage = rest as Package;
+
+    setPackages((prev) => [...prev, newPackage]);
   }, [controller])
 
   if (loading) return <p className="p-8 text-gray-500">Loading bookings...</p>
@@ -32,9 +41,15 @@ function AdminDashboard() {
     setPendingCancelId(null)
   }
 
-  async function handleCancelSlot(id: number) {
+  async function handleCancelSlot(timeslot: TimeSlot) {
     if (!controller) return
+    const id = timeslot.id
     await controller.cancelTimeSlot(id)
+
+    // If its an event then delete the event as well as the timeslot
+    if (timeslot.allowedPackages?.includes('highland')){
+      await controller.deleteEvent(id)
+    }
     setSlots(controller.getAvailableTimeSlots())
   }
 
@@ -74,7 +89,7 @@ function AdminDashboard() {
                     <td className="px-4 py-2 whitespace-nowrap">{b.customerName}</td>
                     <td className="px-4 py-2 whitespace-nowrap">{b.customerEmail}</td>
                     <td className="px-4 py-2 whitespace-nowrap">
-                      {PACKAGES.find((p) => p.id === b.PackageName)?.name ?? b.PackageName ?? '—'}
+                      {packages.find((p) => p.id === b.PackageName)?.name ?? b.PackageName ?? '—'}
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">{b.date}</td>
                     <td className="px-4 py-2 whitespace-nowrap">{b.time}</td>
@@ -120,7 +135,7 @@ function AdminDashboard() {
                     <div className="flex flex-wrap gap-1 mt-1">
                       {s.allowedPackages.map((id) => (
                         <span key={id} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
-                          {PACKAGES.find((p) => p.id === id)?.name ?? id}
+                          {packages.find((p) => p.id === id)?.name ?? id}
                         </span>
                       ))}
                     </div>
@@ -129,7 +144,7 @@ function AdminDashboard() {
                   )}
                 </div>
                 <button
-                  onClick={() => handleCancelSlot(s.id)}
+                  onClick={() => handleCancelSlot(s)}
                   className="ml-2 text-gray-400 hover:text-red-500 transition-colors text-xs cursor-pointer mt-0.5 shrink-0"
                   title="Cancel slot"
                 >
@@ -140,6 +155,8 @@ function AdminDashboard() {
           </ul>
         )}
       </section>
+
+      <EventsForm bookings={bookings} onCreated={handleSlotCreated} />
 
       {pendingBooking && (
         <ConfirmDialog

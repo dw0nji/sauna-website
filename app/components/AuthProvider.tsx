@@ -1,10 +1,11 @@
 'use client'
 
 import { createContext, useContext, useState } from 'react'
+import { useAuth } from '../hooks/useAuth'
 
 const AuthContext = createContext(false)
 
-export function useAuth() {
+export function useAuthContext() {
   return useContext(AuthContext)
 }
 
@@ -13,6 +14,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const {login} = useAuth()
+  
 
   if (authed) {
     return <AuthContext.Provider value={true}>{children}</AuthContext.Provider>
@@ -23,20 +26,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setAuthed(true)
-      } else {
-        setError('Incorrect password')
-        setPassword('')
-      }
-    } catch {
-      setError('Something went wrong. Try again.')
+      await login({email: process.env.NEXT_PUBLIC_ADMIN_EMAIL!, password})
+      setAuthed(true)
+    } catch(error) {
+      setError(String(error))
     } finally {
       setLoading(false)
     }

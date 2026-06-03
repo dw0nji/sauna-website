@@ -16,7 +16,7 @@ export default function Hero() {
       <div className="relative z-10 max-w-3xl mx-auto px-4">
         <h1 className="text-8xl tracking-tight mb-6 text-left text-white">Cool <a className='text-white/70'>Coo</a> <a className=''>Sauna</a></h1>
         <p className="text-xl text-white mb-10">
-          Book your <a className='text-orange-500'>private sauna</a> in the depths of the scottish highlands.
+          Book your <a className='text-orange-500'>private sauna</a> under Ben Nevis.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button href="#booking">Book a Session</Button>

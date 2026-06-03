@@ -8,13 +8,28 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import Booker from '../models/Booker'
-import type { Booking, TimeSlot } from '../models/Booker'
+import type { Booking, SpecialEvent, TimeSlot } from '../models/Booker'
+
+
 
 export default class BookingController {
   private booker: Booker
 
   constructor(booker: Booker) {
     this.booker = booker
+  }
+  async createEvent(event:SpecialEvent): Promise<void> {
+    this.booker.createEvent(event)
+    await addDoc(collection(db, 'events'), {...event})
+  }
+
+  async deleteEvent(timeslotId:number): Promise<void> {
+    this.booker.deleteEvent(timeslotId)
+    const snap = await getDocs(collection(db, 'events'))
+    const match = snap.docs.find((d) => d.data().timeslotId === timeslotId)
+    if (match){
+      await deleteDoc(doc(db, 'timeslots', match.id))
+    }
   }
 
   async createBooking(booking: Booking): Promise<void> {
@@ -121,6 +136,10 @@ export default class BookingController {
 
   getAllBookings(): Booking[] {
     return Object.values(this.booker.allBookings)
+  }
+
+  getNextEvent(): SpecialEvent | null {
+    return this.booker.getNextEvent()
   }
 
   getCancelledBookings(): Booking[] {
