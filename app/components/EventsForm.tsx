@@ -23,7 +23,6 @@ export function EventsForm({ bookings = [], onCreated }: { bookings?: Booking[];
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [duration, setDuration] = useState(0)
-  const [numGuests, setNumGuests] = useState(0)
   const [description, setDescription] = useState('')
   const [features, setFeatures] = useState('')
   const [status, setStatus] = useState<Status>(null)
@@ -62,7 +61,7 @@ export function EventsForm({ bookings = [], onCreated }: { bookings?: Booking[];
         displayPrice: '£25',
         timeslotId: id,
         duration: duration ,
-        maxGuests: numGuests,
+        maxGuests: -1, // no max
         description: description,
         features: features.split('\n').map((s) => s.trim()).filter(Boolean),
       }
@@ -73,7 +72,6 @@ export function EventsForm({ bookings = [], onCreated }: { bookings?: Booking[];
       setDate('')
       setTime('')
       setDuration(0)
-      setNumGuests(0)
       setDescription('')
       setFeatures('')
       onCreated?.()
@@ -114,7 +112,6 @@ export function EventsForm({ bookings = [], onCreated }: { bookings?: Booking[];
           </select>
         </FormField>
 
-        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Duration</label>
             <input
@@ -124,16 +121,7 @@ export function EventsForm({ bookings = [], onCreated }: { bookings?: Booking[];
               className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
             />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Max Guests</label>
-            <input
-              type="number"
-              value={numGuests}
-              onChange={(e) => setNumGuests(Number(e.target.value))}
-              className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-            />
-          </div>
-        </div>
+          
 
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>

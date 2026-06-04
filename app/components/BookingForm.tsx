@@ -61,13 +61,10 @@ export default function BookingForm({ selectedPackage }: Props) {
 
     try {
       const { booking, durationMinutes } = JSON.parse(raw) as { booking: Booking; slotId: number; durationMinutes: number }
-      console.log('creating booking', booking)
       await controller.createBooking(booking)
-      console.log('removing taken timeslots')
       await controller.cancelRelatedTimeSlots(booking.date, booking.time, durationMinutes)
       localStorage.removeItem('pending_booking')
       setSubmitted(true);
-      console.log('setting submitted')
       setForm({
         name: booking.customerName,
         email: booking.customerEmail,

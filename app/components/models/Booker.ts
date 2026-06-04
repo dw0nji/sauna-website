@@ -12,6 +12,7 @@ interface Booking {
 }
 interface SpecialEvent extends Package {
   timeslotId: number
+  timeslot?: TimeSlot
 }
 interface TimeSlot {
     id: number;
@@ -50,6 +51,7 @@ class Booker {
     getNextEvent(): SpecialEvent | null {
         let shortestEvent: SpecialEvent | null = null;
         let shortestValue = Infinity;
+        const now = Date.now();
 
         this.events.forEach((e) => {
             const slot = this.timeslots.find((s) => s.id === e.timeslotId);
@@ -64,7 +66,7 @@ class Booker {
             if (!isPM && h === 12) h = 0;
             const iso = `${slot.date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
             const timestamp = new Date(iso).getTime();
-
+            if (timestamp < now) return;
             if (timestamp < shortestValue) {
                 shortestValue = timestamp;
                 shortestEvent = e;
