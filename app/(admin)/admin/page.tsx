@@ -16,6 +16,7 @@ function AdminDashboard() {
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [pendingCancelId, setPendingCancelId] = useState<number | null>(null)
   const [packages, setPackages] = useState(PACKAGES)
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set())
   useEffect(() => {
     if (!controller) return
     setBookings(controller.getAllBookings())
@@ -115,48 +116,95 @@ function AdminDashboard() {
       </section>
 
       <section className="mb-10">
-        <CreateTimeSlotForm bookings={bookings} onCreated={handleSlotCreated} />
+        <CreateTimeSlotForm bookings={bookings} timeslots={slots} onCreated={handleSlotCreated} />
       </section>
 
       <section>
         <h2 className="text-lg font-semibold mb-4">Available Time Slots ({slots.length})</h2>
         {slots.length === 0 ? (
           <p className="text-gray-500 text-sm">No available slots.</p>
-        ) : (
-          <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {slots.map((s) => (
-              <li
-                key={s.id}
-                className="flex items-start justify-between border border-gray-200 rounded px-3 py-2 text-sm"
-              >
-                <div>
-                  <span>{s.date} — {s.time}</span>
-                  {s.allowedPackages?.length ? (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {s.allowedPackages.map((id) => (
-                        <span key={id} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
-                          {packages.find((p) => p.id === id)?.name ?? id}
+        ) : (() => {
+          const slotsByDate = slots.reduce<Record<string, TimeSlot[]>>((acc, s) => {
+            if (!acc[s.date]) acc[s.date] = []
+            acc[s.date].push(s)
+            return acc
+          }, {})
+          const sortedDates = Object.keys(slotsByDate).sort()
+          return (
+            <div className="flex flex-col gap-3">
+              {sortedDates.map((date) => {
+                const dateSlots = slotsByDate[date]
+                const isOpen = expandedDates.has(date)
+                const friendly = new Date(date + 'T12:00:00').toLocaleDateString('en-GB', {
+                  weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+                })
+                return (
+                  <div key={date} className="border border-gray-200 rounded-lg overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedDates((prev) => {
+                        const next = new Set(prev)
+                        next.has(date) ? next.delete(date) : next.add(date)
+                        return next
+                      })}
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium text-sm">{friendly}</span>
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                          {dateSlots.length} slot{dateSlots.length !== 1 ? 's' : ''}
                         </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400 mt-0.5">All packages</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => handleCancelSlot(s)}
-                  className="ml-2 text-gray-400 hover:text-red-500 transition-colors text-xs cursor-pointer mt-0.5 shrink-0"
-                  title="Cancel slot"
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+                      </div>
+                      <svg
+                        className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {isOpen && (
+                      <div className="px-4 pb-4 pt-2 border-t border-gray-100">
+                        <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                          {dateSlots.map((s) => (
+                            <li
+                              key={s.id}
+                              className="flex items-start justify-between border border-gray-200 rounded px-3 py-2 text-sm"
+                            >
+                              <div>
+                                <span className="font-medium">{s.time}</span>
+                                {s.allowedPackages?.length ? (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {s.allowedPackages.map((id) => (
+                                      <span key={id} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                                        {packages.find((p) => p.id === id)?.name ?? id}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-400 mt-0.5">All packages</p>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => handleCancelSlot(s)}
+                                className="ml-2 text-gray-400 hover:text-red-500 transition-colors text-xs cursor-pointer mt-0.5 shrink-0"
+                                title="Cancel slot"
+                              >
+                                ✕
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
       </section>
 
-      <EventsForm bookings={bookings} onCreated={handleSlotCreated} />
+      <EventsForm bookings={bookings} timeslots={slots} onCreated={handleSlotCreated} />
 
       {pendingBooking && (
         <ConfirmDialog

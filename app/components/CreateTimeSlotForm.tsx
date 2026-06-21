@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useBooking } from './BookingProvider'
 import FormField from './FormField'
-import { Booking } from './models/Booker'
+import { Booking, TimeSlot } from './models/Booker'
 import { PACKAGES, PackageType } from '../lib/packages'
 
 const TIME_SLOTS = [
@@ -40,10 +40,10 @@ const INPUT = 'w-full border border-gray-300 rounded px-3 py-2 text-sm focus:out
 
 type Status = { type: 'success' | 'error'; message: string } | null
 
-export default function CreateTimeSlotForm({bookings, onCreated }: {bookings: Booking[], onCreated?: () => void }) {
+export default function CreateTimeSlotForm({ bookings, timeslots, onCreated }: { bookings: Booking[]; timeslots: TimeSlot[]; onCreated?: () => void }) {
   const { controller } = useBooking()
   const [date, setDate] = useState('')
-  const [time, setTime] = useState('')
+  const [times, setTimes] = useState<string[]>([])
   const [allowedPackages, setAllowedPackages] = useState<PackageType[]>([])
   const [status, setStatus] = useState<Status>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -54,44 +54,56 @@ export default function CreateTimeSlotForm({bookings, onCreated }: {bookings: Bo
     )
   }
 
+  function toggleTime(t: string) {
+    setTimes((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!controller) return
+    if (!controller || times.length === 0) return
 
     setSubmitting(true)
     setStatus(null)
 
-    try {
-      const doubleBooking = bookings.find((b)=>{
-        console.log(b.date + ' compared to ' + date + ' and ' + b.time + ' compared to ' + time)
-        console.log(b.date == date && b.time == time)
-        if(b.date == date && b.time == time && b.status == 'confirmed'){
-          return b
-        }
+    const errors: string[] = []
+    let added = 0
 
-      })
-        if (doubleBooking){
-          setStatus({ type: 'error', message: `There is already a booking at: ${time} on ${date}` })
-          return
-        }
+    for (const time of times) {
+      const doubleBooking = bookings.find(
+        (b) => b.date === date && b.time === time && b.status === 'confirmed'
+      )
+      if (doubleBooking) {
+        errors.push(`${time} already has a booking`)
+        continue
+      }
+      try {
+        await controller.createTimeSlot({
+          id: Date.now(),
+          date,
+          time,
+          isAvailable: true,
+          allowedPackages: allowedPackages.length ? allowedPackages : undefined,
+        })
+        added++
+      } catch (err) {
+        errors.push(`${time}: ${(err as Error).message}`)
+      }
+    }
 
-      await controller.createTimeSlot({
-        id: Date.now(),
-        date,
-        time,
-        isAvailable: true,
-        allowedPackages: allowedPackages.length ? allowedPackages : undefined,
-      })
-      setStatus({ type: 'success', message: `Slot added: ${date} at ${time}` })
+    if (added > 0) {
       setDate('')
-      setTime('')
+      setTimes([])
       setAllowedPackages([])
       onCreated?.()
-    } catch (err) {
-      setStatus({ type: 'error', message: (err as Error).message })
-    } finally {
-      setSubmitting(false)
     }
+
+    if (errors.length) {
+      setStatus({ type: 'error', message: errors.join(' · ') })
+    } else {
+      setStatus({ type: 'success', message: `${added} slot${added !== 1 ? 's' : ''} added for ${date}` })
+    }
+
+    setSubmitting(false)
   }
 
   return (
@@ -108,19 +120,34 @@ export default function CreateTimeSlotForm({bookings, onCreated }: {bookings: Bo
           />
         </FormField>
 
-        <FormField label="Time">
-          <select
-            className={INPUT}
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            required
-          >
-            <option value="">Select a time</option>
-            {TIME_SLOTS.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </FormField>
+        <div className="sm:col-span-3">
+          <p className="text-xs font-medium text-gray-600 mb-2">
+            Time <span className="text-gray-400 font-normal">(select one or more)</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {TIME_SLOTS.map((t) => {
+              const selected = times.includes(t)
+              const taken = date ? timeslots.some((s) => s.date === date && s.time === t) : false
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  disabled={taken}
+                  onClick={() => toggleTime(t)}
+                  className={`px-3 py-1 rounded border text-xs font-medium transition-colors ${
+                    taken
+                      ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed line-through'
+                      : selected
+                      ? 'border-gray-800 bg-gray-900 text-white cursor-pointer'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-gray-500 cursor-pointer'
+                  }`}
+                >
+                  {t}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         <div className="sm:col-span-3">
           <p className="text-xs font-medium text-gray-600 mb-2">
@@ -153,10 +180,10 @@ export default function CreateTimeSlotForm({bookings, onCreated }: {bookings: Bo
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || times.length === 0}
           className="bg-gray-900 text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
         >
-          {submitting ? 'Adding...' : 'Add Slot'}
+          {submitting ? 'Adding...' : `Add ${times.length > 0 ? times.length : ''} Slot${times.length !== 1 ? 's' : ''}`}
         </button>
       </form>
 

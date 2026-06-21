@@ -69,7 +69,7 @@ class Booker {
             if (timestamp < now) return;
             if (timestamp < shortestValue) {
                 shortestValue = timestamp;
-                shortestEvent = e;
+                shortestEvent = { ...e, timeslot: slot };
             }
         });
 

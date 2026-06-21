@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import SectionWrapper from './SectionWrapper'
 import FormField from './FormField'
+import BookingCalendar from './BookingCalendar'
 import { useBooking } from './BookingProvider'
 import { Booking, TimeSlot } from './models/Booker'
 import { Package, PackageType } from '../lib/packages'
@@ -42,16 +43,27 @@ export default function BookingForm({ selectedPackage }: Props) {
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [slotLoad, setSlotLoad] = useState(false)
   const [timeslots, setTimeslots] = useState<TimeSlot[]>([])
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [price, setPrice] = useState<number | null>(null)
 
   const { controller } = useBooking()
 
+  const isSpecialEvent = selectedPackage?.id === 'highland'
+  const eventTimeslot = isSpecialEvent
+    ? (selectedPackage as Package & { timeslot?: TimeSlot }).timeslot
+    : undefined
+
   useEffect(() => {
     calculatePrice()
-  }, [selectedPackage])
+    if (selectedPackage?.id !== 'highland') return
+    const timeslot = (selectedPackage as Package & { timeslot?: TimeSlot }).timeslot
+    if (!timeslot || !controller) return
+    setForm(prev => ({ ...prev, date: timeslot.date, time: timeslot.time }))
+    const all = controller.getAvailableTimeSlots(timeslot.date)
+    const unavailable = controller.getUnavailableTimeSlots(timeslot.date)
+    setTimeslots(filterSlotsByPackage(all, selectedPackage, unavailable))
+  }, [selectedPackage, controller])
 
   const createBookingFromSession = useCallback(async () => {
     if (!controller) return
@@ -143,25 +155,9 @@ export default function BookingForm({ selectedPackage }: Props) {
     })
   }
 
-  useEffect(() => {
-    if (!form.date || !controller) return
-    const all = controller.getAvailableTimeSlots(form.date)
-    const unavailable = controller.getUnavailableTimeSlots(form.date)
-    setTimeslots(filterSlotsByPackage(all, selectedPackage, unavailable))
-  }, [selectedPackage])
-
-  function handleAvailability(
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) {
-    handleChange(e)
-    setSlotLoad(true)
-    try {
-      const all = controller?.getAvailableTimeSlots(e.target.value) ?? []
-      const unavailable = controller?.getUnavailableTimeSlots(e.target.value) ?? []
-      setTimeslots(filterSlotsByPackage(all, selectedPackage, unavailable))
-    } finally {
-      setSlotLoad(false)
-    }
+  function handleCalendarSelect(date: string, time: string, slots: TimeSlot[]) {
+    setForm((prev) => ({ ...prev, date, time }))
+    setTimeslots(slots)
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -238,14 +234,20 @@ export default function BookingForm({ selectedPackage }: Props) {
       <SectionWrapper
         id="booking"
         title="Book a Session"
-        subtitle="Reserve the sauna for your group — includes the cold plunge and firepit."
+        subtitle="Choose your package, date, and time below."
       >
         {selectedPackage && (
           <div className="max-w-2xl mx-auto mb-8 flex items-center justify-between shadow-amber-50 shadow-2xl border-2 border-black dark:border-gray-600 dark:bg-gray-900 px-5 py-4">
             <div>
               <p className="text-xs text-amber-600 font-semibold uppercase tracking-widest">Selected Package</p>
               <p className="font-bold text-gray-900 dark:text-white text-lg">{selectedPackage.name}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{selectedPackage.duration} hr{selectedPackage.duration !== 1 ? 's' : ''} · Up to {selectedPackage.maxGuests} guests</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {selectedPackage.duration} hr{selectedPackage.duration !== 1 ? 's' : ''}
+                {isSpecialEvent && eventTimeslot
+                  ? ` · ${new Date(eventTimeslot.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} at ${eventTimeslot.time}`
+                  : ` · Up to ${selectedPackage.maxGuests} guests`
+                }
+              </p>
             </div>
             <div className="text-right">
               {(() => {
@@ -342,52 +344,25 @@ export default function BookingForm({ selectedPackage }: Props) {
               name="guests"
               type="number"
               min="1"
-              max={selectedPackage?.maxGuests ?? 6}
+              max={isSpecialEvent ? undefined : (selectedPackage?.maxGuests ?? 6)}
               value={form.guests}
               onChange={handleGuestChange}
               required
             />
-            {selectedPackage && (
+            {selectedPackage && !isSpecialEvent && (
               <p className="text-xs text-gray-400 mt-1">Max {selectedPackage.maxGuests} for this package</p>
             )}
           </FormField>
 
-          <FormField label="Preferred Date">
-            <input
-              className={INPUT}
-              name="date"
-              type="date"
-              value={form.date}
-              onChange={handleAvailability}
-              required
+          {!isSpecialEvent && (
+            <BookingCalendar
+              controller={controller}
+              selectedPackage={selectedPackage}
+              selectedDate={form.date}
+              selectedTime={form.time}
+              onSelect={handleCalendarSelect}
             />
-          </FormField>
-
-          <FormField label="Preferred Time">
-            <select
-              className={INPUT}
-              name="time"
-              value={form.time}
-              onChange={handleChange}
-              required
-            >
-              <option value="">
-                {slotLoad ? 'Loading...' : 'Select a time'}
-              </option>
-              {!selectedPackage ? <option disabled>Please select a package to view times</option> :
-              <>
-              {timeslots.length > 0
-                ? timeslots.map((t) => (
-                    <option key={t.id} value={t.time}>
-                      {t.time}
-                    </option>
-                  ))
-                : form.date
-                  ? <option disabled>No availability on this date</option>
-                  : null
-              }</>}
-            </select>
-          </FormField>
+          )}
 
           <FormField label="Special Requests" className="sm:col-span-2">
             <textarea

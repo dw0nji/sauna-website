@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useBooking } from './BookingProvider'
 import FormField from './FormField'
-import { Booking, SpecialEvent } from './models/Booker'
+import { Booking, SpecialEvent, TimeSlot } from './models/Booker'
 import { PACKAGES, PackageType } from '../lib/packages'
 
 const TIME_SLOTS = [
@@ -18,7 +18,7 @@ const INPUT = 'w-full border border-gray-300 rounded px-3 py-2 text-sm focus:out
 
 type Status = { type: 'success' | 'error'; message: string } | null
 
-export function EventsForm({ bookings = [], onCreated }: { bookings?: Booking[]; onCreated?: () => void }) {
+export function EventsForm({ bookings = [], timeslots = [], onCreated }: { bookings?: Booking[]; timeslots?: TimeSlot[]; onCreated?: () => void }) {
   const { controller } = useBooking()
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
@@ -106,9 +106,14 @@ export function EventsForm({ bookings = [], onCreated }: { bookings?: Booking[];
             required
           >
             <option value="">Select a time</option>
-            {TIME_SLOTS.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
+            {TIME_SLOTS.map((t) => {
+              const taken = date ? timeslots.some((s) => s.date === date && s.time === t) : false
+              return (
+                <option key={t} value={t} disabled={taken}>
+                  {t}{taken ? ' (taken)' : ''}
+                </option>
+              )
+            })}
           </select>
         </FormField>
 
