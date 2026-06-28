@@ -145,4 +145,23 @@ export default class BookingController {
   getCancelledBookings(): Booking[] {
     return this.booker.cancelledBookings
   }
+
+  async sendConfirmationEmail(booking: Booking, packageName: string): Promise<void> {
+    const res = await fetch('/api/send-confirmation-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerName: booking.customerName,
+        customerEmail: booking.customerEmail,
+        customerPhone: booking.customerPhone,
+        date: booking.date,
+        time: booking.time,
+        packageName,
+      }),
+    })
+    if (!res.ok) {
+      const { error } = await res.json()
+      throw new Error(error ?? 'Failed to send confirmation email')
+    }
+  }
 }

@@ -30,7 +30,7 @@ const EMPTY: FormData = {
   phone: '',
   date: '',
   time: '',
-  guests: '1',
+  guests: '2',
   notes: '',
 }
 
@@ -72,9 +72,10 @@ export default function BookingForm({ selectedPackage }: Props) {
     console.log('processing booking')
 
     try {
-      const { booking, durationMinutes } = JSON.parse(raw) as { booking: Booking; slotId: number; durationMinutes: number }
+      const { booking, durationMinutes, packageName } = JSON.parse(raw) as { booking: Booking; slotId: number; durationMinutes: number; packageName: string }
       await controller.createBooking(booking)
       await controller.cancelRelatedTimeSlots(booking.date, booking.time, durationMinutes)
+      await controller.sendConfirmationEmail(booking, packageName)
       localStorage.removeItem('pending_booking')
       setSubmitted(true);
       setForm({
@@ -115,9 +116,12 @@ export default function BookingForm({ selectedPackage }: Props) {
   function handleGuestChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
+    const raw = Number(e.target.value)
+    const clamped = Math.max(2, raw)
+    e.target.value = String(clamped)
     handleChange(e)
     if (!selectedPackage) return
-    setPrice(Math.min((selectedPackage.price * Number(e.target.value)) / 100,65))
+    setPrice(Math.min((selectedPackage.price * clamped) / 100, 65))
   }
 
   function handleChange(
@@ -183,7 +187,7 @@ export default function BookingForm({ selectedPackage }: Props) {
       }
 
       const durationMinutes = Math.round(selectedPackage.duration * 60)
-      localStorage.setItem('pending_booking', JSON.stringify({ booking, slotId: slot.id, durationMinutes }))
+      localStorage.setItem('pending_booking', JSON.stringify({ booking, slotId: slot.id, durationMinutes, packageName: selectedPackage.name }))
 
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
@@ -343,14 +347,14 @@ export default function BookingForm({ selectedPackage }: Props) {
               className={INPUT}
               name="guests"
               type="number"
-              min="1"
+              min="2"
               max={isSpecialEvent ? undefined : (selectedPackage?.maxGuests ?? 6)}
               value={form.guests}
               onChange={handleGuestChange}
               required
             />
             {selectedPackage && !isSpecialEvent && (
-              <p className="text-xs text-gray-400 mt-1">Max {selectedPackage.maxGuests} for this package</p>
+              <p className="text-xs text-gray-400 mt-1">2 to {selectedPackage.maxGuests} guests required for this package</p>
             )}
           </FormField>
 

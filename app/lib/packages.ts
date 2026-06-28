@@ -21,7 +21,7 @@ export const PACKAGES: Package[] = [
     price: 1500,
     displayPrice: '£15',
     duration: 1,
-    maxGuests: 8,
+    maxGuests: 6,
     description: 'A quiet escape - the perfect amount of time for the average person!',
     features: [
       'Private sauna session',
@@ -34,7 +34,7 @@ export const PACKAGES: Package[] = [
     price: 2000,
     displayPrice: '£20',
     duration: 1.5,
-    maxGuests: 8,
+    maxGuests: 6,
     description: 'Great value for money',
     features: [
       'Private sauna session',

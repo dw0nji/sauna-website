@@ -81,6 +81,13 @@ export default function BookingCalendar({ controller, selectedPackage, selectedD
     for (const date of dates) {
       const availForDate = allAvailable.filter((s) => s.date === date)
       const unavailForDate = allUnavailable.filter((s) => s.date === date)
+
+      const allSlotsForDate = [...availForDate, ...unavailForDate]
+      const hasCompatibleSlot = allSlotsForDate.some(
+        (s) => !s.allowedPackages?.length || s.allowedPackages.includes(selectedPackage.id as PackageType)
+      )
+      if (!hasCompatibleSlot) continue
+
       const filtered = filterSlotsByPackage(availForDate, selectedPackage, unavailForDate)
 
       let level: AvailabilityLevel
