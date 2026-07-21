@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     priceId = priceConfig.group
     amount = 1
   }    
-
+  console.log('pricId', priceId, 'amount', amount, `${DOMAIN}?payment_success=true&session_id={CHECKOUT_SESSION_ID}&package=${packageId}`)
   const session = await stripe.checkout.sessions.create({
     ui_mode: 'embedded_page',
     line_items: [
