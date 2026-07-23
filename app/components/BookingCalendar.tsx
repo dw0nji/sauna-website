@@ -103,7 +103,8 @@ export default function BookingCalendar({ controller, selectedPackage, selectedD
 
   const activeDateSlots = useMemo(() => {
     if (!activeDate) return []
-    return dateAvailability.get(activeDate)?.slots ?? []
+    const slots = dateAvailability.get(activeDate)?.slots ?? []
+    return slots.sort((a, b) => toMins(a.time) - toMins(b.time))
   }, [activeDate, dateAvailability])
 
   const calendarDays = useMemo(() => {
@@ -146,6 +147,8 @@ export default function BookingCalendar({ controller, selectedPackage, selectedD
     if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1) }
     else setViewMonth((m) => m + 1)
   }
+
+  
 
   const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
   const activeDateLabel = activeDate
@@ -293,6 +296,7 @@ export default function BookingCalendar({ controller, selectedPackage, selectedD
                 <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 max-h-64 lg:max-h-none">
                   {activeDateSlots.map((slot) => {
                     const isSelected = selectedTime === slot.time && selectedDate === slot.date
+
                     return (
                       <button
                         key={slot.id}
