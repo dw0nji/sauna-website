@@ -108,7 +108,7 @@ const StandardPackageCard = ({ pkg, isSelected, onSelect }: { pkg: Package, isSe
                   onClick={() => onSelect(pkg)}
                   className={`mt-auto w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200 cursor-pointer
                     ${isSelected
-                      ? 'bg-orange-400 text-white shadow-lg shadow-orange-500/30'
+                      ? 'bg-orange-400 text-white shadow-lg shadow-orange-500/30 dark:shadow-amber-500/30'
                       : pkg.highlight
                         ? 'bg-gray-900 text-white hover:bg-gray-700'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600'
