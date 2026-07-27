@@ -124,7 +124,7 @@ export default function BookingCalendar({ controller, selectedPackage, selectedD
   }
 
   function isPast(d: Date): boolean {
-    return d < todayMidnight
+    return d <= todayMidnight
   }
 
   function handleDateClick(d: Date) {
