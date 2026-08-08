@@ -152,6 +152,17 @@ class Booker {
         }
     }
 
+    deleteBooking(bookingId: number): void {
+        const booking = this.allBookings[bookingId];
+
+        if (!booking) {
+            throw new Error(`Booking ${bookingId} not found.`);
+        }
+
+        delete this.allBookings[bookingId];
+        this.cancelledBookings = this.cancelledBookings.filter((b) => b.id !== bookingId);
+    }
+
     updateBooking(
         bookingId: number,
         updates: Partial<Omit<Booking, 'id'>>

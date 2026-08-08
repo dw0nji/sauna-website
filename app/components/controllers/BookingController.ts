@@ -49,6 +49,15 @@ export default class BookingController {
     }
   }
 
+  async deleteBooking(bookingId: number): Promise<void> {
+    this.booker.deleteBooking(bookingId)
+    const snap = await getDocs(collection(db, 'bookings'))
+    const match = snap.docs.find((d) => d.data().id === bookingId)
+    if (match) {
+      await deleteDoc(doc(db, 'bookings', match.id))
+    }
+  }
+
   async updateBooking(
     bookingId: number,
     updates: Partial<Omit<Booking, 'id'>>

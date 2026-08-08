@@ -15,6 +15,7 @@ function AdminDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [pendingCancelId, setPendingCancelId] = useState<number | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
   const [packages, setPackages] = useState(PACKAGES)
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set())
   useEffect(() => {
@@ -34,12 +35,31 @@ function AdminDashboard() {
   if (error) return <p className="p-8 text-red-500">Error: {error}</p>
   if (!controller) return null
 
+  function isPastBooking(b: Booking): boolean {
+    const match = b.time.match(/(\d+):(\d+)\s*(AM|PM)/i)
+    if (!match) return false
+    let h = parseInt(match[1])
+    const m = parseInt(match[2])
+    const isPM = match[3].toUpperCase() === 'PM'
+    if (isPM && h !== 12) h += 12
+    if (!isPM && h === 12) h = 0
+    const iso = `${b.date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
+    return new Date(iso).getTime() < Date.now()
+  }
+
   async function handleCancelBooking(id: number) {
     if (!controller) return
     await controller.cancelBooking(id)
     setBookings(controller.getAllBookings())
     setSlots(controller.getAvailableTimeSlots())
     setPendingCancelId(null)
+  }
+
+  async function handleDeleteBooking(id: number) {
+    if (!controller) return
+    await controller.deleteBooking(id)
+    setBookings(controller.getAllBookings())
+    setPendingDeleteId(null)
   }
 
   async function handleCancelSlot(timeslot: TimeSlot) {
@@ -60,6 +80,10 @@ function AdminDashboard() {
 
   const pendingBooking = pendingCancelId !== null
     ? bookings.find((b) => b.id === pendingCancelId)
+    : null
+
+  const pendingDeleteBooking = pendingDeleteId !== null
+    ? bookings.find((b) => b.id === pendingDeleteId)
     : null
 
   return (
@@ -95,17 +119,29 @@ function AdminDashboard() {
                     <td className="px-4 py-2 whitespace-nowrap">{b.date}</td>
                     <td className="px-4 py-2 whitespace-nowrap">{b.time}</td>
                     <td className="px-4 py-2 capitalize whitespace-nowrap">{b.status}</td>
-                    <td className="px-4 py-2 text-right">
-                      {b.status == 'confirmed' ?
-                      <button
-                        onClick={() => setPendingCancelId(b.id)}
-                        className="text-gray-400 hover:text-red-500 transition-colors text-xs cursor-pointer"
-                        title="Cancel booking"
-                      >
-                        ✕
-                      </button>:
-                      <></>
-                    }
+                    <td className="px-4 py-2 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-3">
+                        {b.status == 'confirmed' &&
+                          <button
+                            onClick={() => setPendingCancelId(b.id)}
+                            className="text-gray-400 hover:text-red-500 transition-colors text-xs cursor-pointer"
+                            title="Cancel booking"
+                          >
+                            ✕
+                          </button>
+                        }
+                        {isPastBooking(b) &&
+                          <button
+                            onClick={() => setPendingDeleteId(b.id)}
+                            className="text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                            title="Delete booking"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0v13a1 1 0 01-1 1H8a1 1 0 01-1-1V7h10z" />
+                            </svg>
+                          </button>
+                        }
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -212,6 +248,15 @@ function AdminDashboard() {
           confirmLabel="Cancel Booking"
           onConfirm={() => handleCancelBooking(pendingBooking.id)}
           onCancel={() => setPendingCancelId(null)}
+        />
+      )}
+
+      {pendingDeleteBooking && (
+        <ConfirmDialog
+          message={`Permanently delete ${pendingDeleteBooking.customerName}'s booking on ${pendingDeleteBooking.date} at ${pendingDeleteBooking.time}? This cannot be undone.`}
+          confirmLabel="Delete Booking"
+          onConfirm={() => handleDeleteBooking(pendingDeleteBooking.id)}
+          onCancel={() => setPendingDeleteId(null)}
         />
       )}
     </main>
