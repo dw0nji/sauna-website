@@ -12,7 +12,7 @@ export default function Footer() {
           <div>
             <p className="text-white font-bold text-lg mb-2">Cool Coo Sauna</p>
             <p className="text-sm">Mill Cottage, Glenmallie Road, lochyside Caol, PH33 7BA</p>
-            <p className="text-sm">hello@saunaco.com · +447884402926</p>
+            <p className="text-sm">nickynoodonnelly@gmail.com · +447884402926</p>
           </div>
           <nav>
             <ul className="flex flex-col sm:flex-row gap-4">
