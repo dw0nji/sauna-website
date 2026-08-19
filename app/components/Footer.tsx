@@ -1,7 +1,7 @@
 const LINKS = [
   { label: 'The Experience', href: '#amenities' },
   { label: 'Testimonials', href: '#testimonials' },
-  { label: 'Book Now', href: '#booking' },
+  { label: 'Book Now', href: '#packages' },
 ]
 
 export default function Footer() {

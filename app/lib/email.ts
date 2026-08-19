@@ -1,4 +1,3 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -9,6 +8,15 @@ const FROM = `Cool Coo Sauna <${noti_email}>`
 
 const GOOGLE_LOCATION_URL = process.env.GOOGLE_LOCATION_URL
 
+export type ConfirmationEmail = {
+  customerName: string
+  customerEmail: string
+  customerPhone?: string
+  date: string
+  time: string
+  packageName: string
+}
+
 function formatDate(dateStr: string): string {
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-GB', {
     weekday: 'long',
@@ -18,13 +26,14 @@ function formatDate(dateStr: string): string {
   })
 }
 
-export async function POST(req: NextRequest) {
-  const { customerName, customerEmail, customerPhone, date, time, packageName } = await req.json()
-
-  if (!customerEmail || !date || !time) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-  }
-
+export async function sendBookingEmails({
+  customerName,
+  customerEmail,
+  customerPhone,
+  date,
+  time,
+  packageName,
+}: ConfirmationEmail): Promise<void> {
   const { error } = await resend.emails.send({
     from: FROM,
     to: customerEmail,
@@ -49,7 +58,7 @@ export async function POST(req: NextRequest) {
               <!-- Confirmation badge -->
               <tr>
                 <td style="padding:36px 40px 0;text-align:center;">
-                  
+
                   <h2 style="margin:20px 0 6px;color:#111827;font-size:22px;">See you soon, ${customerName}!</h2>
                   <p style="margin:0;color:#6b7280;font-size:15px;">Here's a summary of your upcoming session.</p>
                 </td>
@@ -119,9 +128,8 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error('Resend error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    throw new Error(error.message)
   }
-  
 
   await resend.emails.send({
     from: FROM,
@@ -140,6 +148,4 @@ export async function POST(req: NextRequest) {
       <p><a href="${process.env.NEXT_PUBLIC_FRONTEND_DOMAIN}">View in admin</a></p>
     `,
   })
-
-  return NextResponse.json({ success: true })
 }

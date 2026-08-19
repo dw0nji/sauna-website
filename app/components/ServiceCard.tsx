@@ -27,7 +27,7 @@ export default function ServiceCard({
         <span className="font-semibold text-gray-900 dark:text-white">{price}</span>
       </div>
       <a
-        href="#booking"
+        href="#packages"
         className="block text-center border border-gray-900 dark:border-gray-400 text-gray-900 dark:text-gray-300 py-2 rounded text-sm font-medium hover:bg-gray-900 dark:hover:bg-white hover:text-white dark:hover:text-gray-900 transition-colors"
       >
         Book This

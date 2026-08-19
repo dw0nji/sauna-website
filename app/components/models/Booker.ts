@@ -4,11 +4,18 @@ interface Booking {
     id: number;
     date: string;
     time: string;
-    status: 'confirmed' | 'cancelled';
+    status: 'pending' | 'confirmed' | 'cancelled';
     PackageName:PackageType;
     customerName: string;
     customerEmail: string;
     customerPhone: string;
+    /** Epoch ms the slot was held. Set server-side; drives hold expiry. */
+    createdAt?: number;
+    /** Stripe Checkout Session holding this slot, so the hold can expire it. */
+    sessionId?: string;
+    /** Stored rather than derived: event packages aren't in PACKAGES. */
+    durationMinutes?: number;
+    packageName?: string;
 }
 interface SpecialEvent extends Package {
   timeslotId: number
@@ -98,10 +105,7 @@ class Booker {
 
         slot.isAvailable = false;
 
-        this.allBookings[booking.id] = {
-            ...booking,
-            status: 'confirmed',
-        };
+        this.allBookings[booking.id] = { ...booking };
 
         this.newBookings.push(booking.id);
     }

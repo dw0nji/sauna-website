@@ -10,14 +10,95 @@ import { db } from '../../lib/firebase'
 import Booker from '../models/Booker'
 import type { Booking, SpecialEvent, TimeSlot } from '../models/Booker'
 
-
-
 export default class BookingController {
   private booker: Booker
 
   constructor(booker: Booker) {
     this.booker = booker
   }
+
+  /**
+   * Reserves a slot for a booking awaiting payment. Booker.createBooking throws
+   * if the slot is gone or the package isn't allowed, which is what stops a
+   * customer being charged for a slot someone else already took.
+   *
+   * Only the exact slot is flipped to unavailable — never deleted. The window
+   * logic in filterSlotsByPackage hides overlapping neighbours for free, and
+   * the deletions in cancelRelatedTimeSlots stay on the confirmation path
+   * because they cannot be undone if the hold lapses.
+   */
+  async holdSlot(booking: Booking): Promise<void> {
+    this.booker.createBooking(booking)
+    await addDoc(collection(db, 'bookings'), { ...booking })
+
+    const snap = await getDocs(collection(db, 'timeslots'))
+    const slot = snap.docs.find(
+      (d) => d.data().date === booking.date && d.data().time === booking.time
+    )
+    if (slot) {
+      await updateDoc(doc(db, 'timeslots', slot.id), { isAvailable: false })
+    }
+  }
+
+  static async getBookingById(bookingId: number): Promise<Booking | null> {
+    const snap = await getDocs(collection(db, 'bookings'))
+    const match = snap.docs.find((d) => d.data().id === bookingId)
+    return match ? (match.data() as Booking) : null
+  }
+
+  static async setSessionId(bookingId: number, sessionId: string): Promise<void> {
+    const snap = await getDocs(collection(db, 'bookings'))
+    const match = snap.docs.find((d) => d.data().id === bookingId)
+    if (match) {
+      await updateDoc(doc(db, 'bookings', match.id), { sessionId })
+    }
+  }
+
+  static async confirmBooking(bookingId: number): Promise<void> {
+    const snap = await getDocs(collection(db, 'bookings'))
+    const match = snap.docs.find((d) => d.data().id === bookingId)
+    if (match) {
+      await updateDoc(doc(db, 'bookings', match.id), { status: 'confirmed' })
+    }
+  }
+
+  /** Drops an unpaid booking and puts its slot back on sale. */
+  static async releaseHold(bookingId: number): Promise<void> {
+    const bookingsSnap = await getDocs(collection(db, 'bookings'))
+    const match = bookingsSnap.docs.find((d) => d.data().id === bookingId)
+    if (!match) return
+
+    const { date, time, status } = match.data()
+    if (status !== 'pending') return
+
+    await deleteDoc(doc(db, 'bookings', match.id))
+
+    const slotsSnap = await getDocs(collection(db, 'timeslots'))
+    const slot = slotsSnap.docs.find(
+      (d) => d.data().date === date && d.data().time === time
+    )
+    if (slot) {
+      await updateDoc(doc(db, 'timeslots', slot.id), { isAvailable: true })
+    }
+  }
+
+  /**
+   * Pending bookings held longer than maxAgeMs. Holds with no usable createdAt
+   * are treated as expired so nothing can occupy a slot forever.
+   */
+  static async getExpiredHolds(maxAgeMs: number): Promise<Booking[]> {
+    const cutoff = Date.now() - maxAgeMs
+    const snap = await getDocs(collection(db, 'bookings'))
+
+    return snap.docs
+      .map((d) => d.data() as Booking)
+      .filter(
+        (b) =>
+          b.status === 'pending' &&
+          (typeof b.createdAt !== 'number' || b.createdAt < cutoff)
+      )
+  }
+
   async createEvent(event:SpecialEvent): Promise<void> {
     this.booker.createEvent(event)
     await addDoc(collection(db, 'events'), {...event})
@@ -34,10 +115,7 @@ export default class BookingController {
 
   async createBooking(booking: Booking): Promise<void> {
     this.booker.createBooking(booking)
-    await addDoc(collection(db, 'bookings'), {
-      ...booking,
-      status: 'confirmed',
-    })
+    await addDoc(collection(db, 'bookings'), { ...booking })
   }
 
   async cancelBooking(bookingId: number): Promise<void> {
@@ -153,24 +231,5 @@ export default class BookingController {
 
   getCancelledBookings(): Booking[] {
     return this.booker.cancelledBookings
-  }
-
-  async sendConfirmationEmail(booking: Booking, packageName: string): Promise<void> {
-    const res = await fetch('/api/send-confirmation-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        customerName: booking.customerName,
-        customerEmail: booking.customerEmail,
-        customerPhone: booking.customerPhone,
-        date: booking.date,
-        time: booking.time,
-        packageName,
-      }),
-    })
-    if (!res.ok) {
-      const { error } = await res.json()
-      throw new Error(error ?? 'Failed to send confirmation email')
-    }
   }
 }

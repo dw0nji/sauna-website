@@ -19,7 +19,7 @@ export default function Hero() {
           Book your <a className='text-orange-500'>private sauna</a> under Ben Nevis.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button href="#booking">Book a Session</Button>
+          <Button href="#packages">Book a Session</Button>
           <SecondaryButton href="#amenities">View more</SecondaryButton>
         </div>
       </div>

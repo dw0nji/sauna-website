@@ -37,7 +37,7 @@ export function EventsForm({ bookings = [], timeslots = [], onCreated }: { booki
 
     try {
       const doubleBooking = bookings.find(
-        (b) => b.date === date && b.time === time && b.status === 'confirmed'
+        (b) => b.date === date && b.time === time && b.status !== 'cancelled'
       )
       if (doubleBooking) {
         setStatus({ type: 'error', message: `There is already a booking at: ${time} on ${date}` })

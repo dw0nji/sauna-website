@@ -38,6 +38,22 @@ type Props = {
   selectedPackage: Package | null
 }
 
+/**
+ * Hands a held slot straight back rather than leaving it reserved until a
+ * sweep. Fire and forget: the sweep and the expired-session webhook still cover
+ * it if this never lands, so there's nothing to block the UI on. keepalive lets
+ * it survive the page going away.
+ */
+function releaseHold(sessionId: string | null) {
+  if (!sessionId) return
+  fetch('/api/release-hold', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId }),
+    keepalive: true,
+  }).catch((err) => console.error('Failed to release hold:', err))
+}
+
 export default function BookingForm({ selectedPackage }: Props) {
   const [form, setForm] = useState<FormData>(EMPTY)
   const [submitted, setSubmitted] = useState(false)
@@ -45,6 +61,8 @@ export default function BookingForm({ selectedPackage }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [timeslots, setTimeslots] = useState<TimeSlot[]>([])
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [holdExpiresAt, setHoldExpiresAt] = useState<number | null>(null)
   const [price, setPrice] = useState<number | null>(null)
 
   const { controller } = useBooking()
@@ -65,43 +83,41 @@ export default function BookingForm({ selectedPackage }: Props) {
     setTimeslots(filterSlotsByPackage(all, selectedPackage, unavailable))
   }, [selectedPackage, controller])
 
-  const createBookingFromSession = useCallback(async () => {
-    if (!controller) return
+  // The booking and the confirmation email are handled by the Stripe webhook,
+  // so this only restores enough detail to show the customer what they booked.
+  // It is fine for the stored copy to be missing — the booking still happens.
+  const showConfirmation = useCallback(() => {
     const raw = localStorage.getItem('pending_booking')
-    if (!raw) return
-    console.log('processing booking')
+    localStorage.removeItem('pending_booking')
 
-    try {
-      const { booking, durationMinutes, packageName } = JSON.parse(raw) as { booking: Booking; slotId: number; durationMinutes: number; packageName: string }
-      await controller.createBooking(booking)
-      await controller.cancelRelatedTimeSlots(booking.date, booking.time, durationMinutes)
-      await controller.sendConfirmationEmail(booking, packageName)
-      localStorage.removeItem('pending_booking')
-      setSubmitted(true);
-      setForm({
-        name: booking.customerName,
-        email: booking.customerEmail,
-        phone: booking.customerPhone,
-        date: booking.date,
-        time: booking.time,
-        guests: '1',
-        notes: '',
-      })
-      setSubmitted(true)
-      window.history.replaceState({}, '', window.location.pathname)
-      window.location.href = '#booking'
-    } catch(err) {
-      console.error(err)
-      localStorage.removeItem('pending_booking')
+    if (raw) {
+      try {
+        const { booking } = JSON.parse(raw) as { booking: Booking }
+        setForm({
+          name: booking.customerName,
+          email: booking.customerEmail,
+          phone: booking.customerPhone,
+          date: booking.date,
+          time: booking.time,
+          guests: '1',
+          notes: '',
+        })
+      } catch (err) {
+        console.error(err)
+      }
     }
-  }, [controller])
+
+    setSubmitted(true)
+    window.history.replaceState({}, '', window.location.pathname)
+    window.location.href = '#booking'
+  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('payment_success') === 'true') {
-      createBookingFromSession()
+      showConfirmation()
     }
-  }, [createBookingFromSession])
+  }, [showConfirmation])
 
   function calculatePrice(){
     if (selectedPackage) {
@@ -159,6 +175,25 @@ export default function BookingForm({ selectedPackage }: Props) {
     })
   }
 
+  function closeCheckout() {
+    releaseHold(sessionId)
+    setClientSecret(null)
+    setSessionId(null)
+    setHoldExpiresAt(null)
+  }
+
+  // The hold has lapsed: release it our side too so the slot returns immediately
+  // instead of waiting for the next sweep.
+  const handleHoldExpired = useCallback(() => {
+    releaseHold(sessionId)
+    setClientSecret(null)
+    setSessionId(null)
+    setHoldExpiresAt(null)
+    localStorage.removeItem('pending_booking')
+    // The slot is released, not taken — leave it selectable so they can retry it.
+    setSubmitError('Your slot was only held for 5 minutes and has now been released. Please confirm your time again.')
+  }, [sessionId])
+
   function handleCalendarSelect(date: string, time: string, slots: TimeSlot[]) {
     setForm((prev) => ({ ...prev, date, time }))
     setTimeslots(slots)
@@ -179,7 +214,7 @@ export default function BookingForm({ selectedPackage }: Props) {
         id: Date.now(),
         date: form.date,
         time: form.time,
-        status: 'confirmed',
+        status: 'pending',
         PackageName: selectedPackage.id as PackageType,
         customerName: form.name,
         customerEmail: form.email,
@@ -187,6 +222,7 @@ export default function BookingForm({ selectedPackage }: Props) {
       }
 
       const durationMinutes = Math.round(selectedPackage.duration * 60)
+      // Kept only so the confirmation screen can show the details on return.
       localStorage.setItem('pending_booking', JSON.stringify({ booking, slotId: slot.id, durationMinutes, packageName: selectedPackage.name }))
 
       const res = await fetch('/api/create-checkout-session', {
@@ -194,13 +230,31 @@ export default function BookingForm({ selectedPackage }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           packageId:selectedPackage.id,
-          amount:form.guests
+          amount:form.guests,
+          booking,
+          durationMinutes,
+          packageName: selectedPackage.name,
         }),
       })
 
+      if (res.status === 409) {
+        // Someone else took the slot while this customer was filling the form.
+        // Nothing was charged — drop the dead slot and let them re-pick. Our
+        // slot list is a page-load snapshot, so the server stays the authority.
+        const { error } = await res.json()
+        localStorage.removeItem('pending_booking')
+        setTimeslots((prev) =>
+          prev.filter((s) => !(s.date === booking.date && s.time === booking.time))
+        )
+        setForm((prev) => ({ ...prev, time: '' }))
+        throw new Error(error ?? 'That time slot has just been taken. Please choose another.')
+      }
+
       if (!res.ok) throw new Error('Failed to create checkout session.')
-      const { clientSecret } = await res.json()
+      const { clientSecret, sessionId, expiresAt } = await res.json()
       setClientSecret(clientSecret)
+      setSessionId(sessionId)
+      setHoldExpiresAt(expiresAt)
     } catch (err) {
       setSubmitError((err as Error).message)
       localStorage.removeItem('pending_booking')
@@ -219,8 +273,9 @@ export default function BookingForm({ selectedPackage }: Props) {
             </svg>
           </div>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Thanks, <strong>{form.name}</strong>! Your payment was successful and we've reserved your
-            slot. A confirmation will be sent to <strong>{form.email}</strong> shortly.
+            Thanks{form.name ? <>, <strong>{form.name}</strong></> : ''}! Your payment was successful
+            and we've reserved your slot. A confirmation will be sent to{' '}
+            {form.email ? <strong>{form.email}</strong> : 'your email address'} shortly.
           </p>
           <button
             className="text-sm text-gray-500 dark:text-gray-400 underline hover:text-gray-800 dark:hover:text-gray-200 cursor-pointer"
@@ -408,10 +463,12 @@ export default function BookingForm({ selectedPackage }: Props) {
         </form>
       </SectionWrapper>
 
-      {clientSecret && (
+      {clientSecret && holdExpiresAt && (
         <CheckoutModal
           clientSecret={clientSecret}
-          onClose={() => setClientSecret(null)}
+          expiresAt={holdExpiresAt}
+          onClose={closeCheckout}
+          onExpire={handleHoldExpired}
         />
       )}
     </>

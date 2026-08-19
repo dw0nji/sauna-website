@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
-import { getAuth } from 'firebase/auth'
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -15,4 +15,29 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
 const db = getFirestore(app)
 const auth = getAuth(app)
 
-export { db, auth }
+let adminSignIn: Promise<unknown> | null = null
+
+/**
+ * Server-only. Firestore rules only allow writes from an admin uid, so API
+ * routes sign in as the admin before writing. The promise is cached so
+ * concurrent requests share one sign-in, and cleared on failure so the next
+ * request retries rather than reusing a rejected promise.
+ */
+async function signInAsAdmin(): Promise<void> {
+  if (auth.currentUser) return
+
+  if (!adminSignIn) {
+    adminSignIn = signInWithEmailAndPassword(
+      auth,
+      process.env.NEXT_PUBLIC_ADMIN_EMAIL!,
+      process.env.ADMIN_PASSWORD!
+    ).catch((err) => {
+      adminSignIn = null
+      throw err
+    })
+  }
+
+  await adminSignIn
+}
+
+export { db, auth, signInAsAdmin }
