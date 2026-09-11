@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const noti_email = process.env.EMAIL_ADDRESS
-const email = process.env.NEXT_PUBLIC_ADMIN_EMAIL
+const email = process.env.NEXT_PUBLIC_REPLY_EMAIL
 
 const FROM = `Cool Coo Sauna <${noti_email}>`
 
