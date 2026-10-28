@@ -1,4 +1,5 @@
 import SectionWrapper from './SectionWrapper'
+import MapEmbed from './MapEmbed'
 
 export default function LocationSection() {
   return (
@@ -10,15 +11,7 @@ export default function LocationSection() {
       <div className="max-w-4xl mx-auto">
         {/* Map placeholder — replace the div below with your map embed */}
         <div className="w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
-          <iframe
-            src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d944.5975150384993!2d-5.099361225714618!3d56.83416606410814!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2suk!4v1782644050999!5m2!1sen!2suk"
-            width="100%"
-            height="450"
-            style={{ border: 0 }}
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="strict-origin-when-cross-origin"
-          />
+          <MapEmbed />
         </div>
 
         {/* Address & details strip */}

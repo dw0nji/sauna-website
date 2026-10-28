@@ -16,12 +16,13 @@ export default function BookingSection() {
   }
 
   return (
-    <>
+    <section className='bg-gray-50 dark:bg-inherit'>
       <PackagesSection
         selectedPackageId={selectedPackage?.id ?? null}
         onSelect={handleSelectPackage}
       />
-      <BookingForm selectedPackage={selectedPackage} />
-    </>
+      {/* Always mounted so form input survives a package change; it hides itself with no package */}
+      <BookingForm selectedPackage={selectedPackage} setSelectedPackage={setSelectedPackage} />
+    </section>
   )
 }

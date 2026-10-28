@@ -17,7 +17,7 @@ export default function AmenityCard({ name, description, url }: AmenityCardProps
         sizes="(max-width: 768px) 100vw, 50vw"
       />
       <div className="absolute inset-0 bg-black/50" />
-      <div className="p-6 flex flex-col gap-2 mt-auto relative z-10 min-h-36">
+      <div className="p-6 flex flex-col gap-2 mt-auto relative z-10 min-h-36 m-4 bg-amber-50/10 backdrop-blur-sm">
         <h2 className="text-2xl text-white font-semibold">{name}</h2>
         <p className="text-white text-sm md:text-md leading-relaxed">{description}</p>
       </div>

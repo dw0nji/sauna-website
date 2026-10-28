@@ -51,6 +51,7 @@ function AdminDashboard() {
     if (!controller) return
     await controller.cancelBooking(id)
     setBookings(controller.getAllBookings())
+    
     setSlots(controller.getAvailableTimeSlots())
     setPendingCancelId(null)
   }

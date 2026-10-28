@@ -31,7 +31,7 @@ export default function PackagesSection({ selectedPackageId, onSelect }: Props) 
   return (
     <SectionWrapper
       id="packages"
-      title="Choose Your Session"
+      title="Choose Your Package"
       subtitle="Every package includes exclusive access to the private sauna and the breathtaking Highland views."
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -59,7 +59,7 @@ const StandardPackageCard = ({ pkg, isSelected, onSelect }: { pkg: Package, isSe
               key={pkg.id}
               className={`relative flex flex-col rounded-md overflow-hidden border-2 transition-all duration-300
                 ${pkg.highlight
-                  ? 'border-amber-500  shadow-xl shadow-amber-500/20 scale-105'
+                  ? 'border-amber-500  shadow-xl shadow-amber-500/10 scale-105'
                   : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
                 }
                 ${isSelected ? 'ring-3 ring-orange-300 ring-offset-2 ring-offset-white dark:ring-offset-gray-950' : ''}
@@ -108,7 +108,7 @@ const StandardPackageCard = ({ pkg, isSelected, onSelect }: { pkg: Package, isSe
                   onClick={() => onSelect(pkg)}
                   className={`mt-auto w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200 cursor-pointer
                     ${isSelected
-                      ? 'bg-orange-400 text-white shadow-lg shadow-orange-500/30 dark:shadow-amber-500/30'
+                      ? 'bg-orange-400 text-white shadow-lg'
                       : pkg.highlight
                         ? 'bg-gray-900 text-white hover:bg-gray-700'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600'

@@ -36,6 +36,7 @@ const EMPTY: FormData = {
 
 type Props = {
   selectedPackage: Package | null
+  setSelectedPackage: (pkg: Package | null) => void
 }
 
 /**
@@ -54,7 +55,7 @@ function releaseHold(sessionId: string | null) {
   }).catch((err) => console.error('Failed to release hold:', err))
 }
 
-export default function BookingForm({ selectedPackage }: Props) {
+export default function BookingForm({ selectedPackage, setSelectedPackage }: Props) {
   const [form, setForm] = useState<FormData>(EMPTY)
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -199,6 +200,15 @@ export default function BookingForm({ selectedPackage }: Props) {
     setTimeslots(slots)
   }
 
+  function handleChangePackage(){
+    // Hiding the form would otherwise leave any open checkout's slot held until expiry
+    closeCheckout()
+
+    //focus and reset to no package
+    document.getElementById('packages')?.scrollIntoView({ behavior: 'auto'})
+    setSelectedPackage(null)
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!controller || !selectedPackage) return
@@ -279,7 +289,7 @@ export default function BookingForm({ selectedPackage }: Props) {
           </p>
           <button
             className="text-sm text-gray-500 dark:text-gray-400 underline hover:text-gray-800 dark:hover:text-gray-200 cursor-pointer"
-            onClick={() => { setForm(EMPTY); setSubmitted(false) }}
+            onClick={() => { setForm(EMPTY); setSubmitted(false); handleChangePackage() }}
           >
             Make another booking
           </button>
@@ -294,11 +304,12 @@ export default function BookingForm({ selectedPackage }: Props) {
         id="booking"
         title="Book a Session"
         subtitle="Choose your package, date, and time below."
+        className={selectedPackage ? '' : 'hidden'}
       >
         {selectedPackage && (
-          <div className="max-w-2xl mx-auto mb-8 flex items-center justify-between shadow-amber-50 shadow-2xl border-2 border-black dark:border-gray-600 dark:bg-gray-900 px-5 py-4">
+          <div className="max-w-2xl mx-auto mb-8 flex bg-white items-center justify-between shadow-amber-50 shadow-2xl border-2 border-black dark:border-gray-600 dark:bg-gray-900 px-5 py-4">
             <div>
-              <p className="text-xs text-amber-600 font-semibold uppercase tracking-widest">Selected Package</p>
+              <p className="text-xs text-amber-600  font-semibold uppercase tracking-widest">Selected Package</p>
               <p className="font-bold text-gray-900 dark:text-white text-lg">{selectedPackage.name}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {selectedPackage.duration} hr{selectedPackage.duration !== 1 ? 's' : ''}
@@ -330,30 +341,10 @@ export default function BookingForm({ selectedPackage }: Props) {
               })()}
               <button
                 type="button"
-                onClick={() => document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={handleChangePackage}
                 className="block text-xs text-amber-600 hover:text-amber-800 underline mt-1 cursor-pointer ml-auto"
               >
                 Change
-              </button>
-            </div>
-          </div>
-        )}
-
-        {!selectedPackage && (
-          <div className="max-w-2xl mx-auto mb-8 flex items-center gap-4 bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl px-5 py-4">
-            <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 shrink-0 flex items-center justify-center">
-              <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No package selected</p>
-              <button
-                type="button"
-                onClick={() => document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' })}
-                className="text-sm text-amber-600 hover:text-amber-800 underline cursor-pointer"
-              >
-                Choose a package above to continue
               </button>
             </div>
           </div>

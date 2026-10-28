@@ -29,14 +29,14 @@ const AMENITIES = [
 
 export default function AmenitiesSection() {
   return (
-    <section id="amenities" className='py-20 xl:mx-20 mx-auto'>
+    <section id="amenities" className='py-20 xl:mx-30 mx-auto'>
         <div className="max-w-6xl mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold mb-3">The Experience</h2>
               <p className="text-gray-600">One sauna. Four things that make it unforgettable.</p>
             </div>
         </div>
-        <div className="grid md:grid-cols-2 ">
+        <div className="grid md:grid-cols-2 mx-auto ">
           {AMENITIES.map((amenity) => (
             <AmenityCard key={amenity.name} {...amenity} />
           ))}
