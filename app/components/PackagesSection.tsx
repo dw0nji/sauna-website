@@ -31,7 +31,7 @@ export default function PackagesSection({ selectedPackageId, onSelect }: Props) 
   return (
     <SectionWrapper
       id="packages"
-      title="Choose Your Package"
+      title="Book a Session"
       subtitle="Every package includes exclusive access to the private sauna and the breathtaking Highland views."
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">

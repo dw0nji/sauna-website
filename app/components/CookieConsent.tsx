@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useCookies } from './CookiesProvider'
 
 export default function CookieConsent() {
@@ -16,7 +17,11 @@ export default function CookieConsent() {
     >
       <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">We use cookies</p>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        We use third-party and essential cookies to improve your experience.
+        Essential storage keeps the site and checkout working. With your consent we also load Google Maps,
+        which sets its own cookies.{' '}
+        <Link href="/cookies" className="underline text-amber-600 dark:text-amber-400 hover:text-amber-800">
+          Cookie Policy
+        </Link>
       </p>
       <div className="flex gap-3 justify-end">
         <button

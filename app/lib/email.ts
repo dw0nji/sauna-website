@@ -103,6 +103,7 @@ export async function sendBookingEmails({
               <tr>
                 <td style="padding:0 40px 36px;text-align:center;">
                   <p style="margin:0 0 16px;color:#6b7280;font-size:13px;">
+                    Need to cancel? Contact us at least 24 hours before your session for a full refund.<br/><br/>
                     If you have any questions, please contact us at<br/>
                     <a href="mailto:${email}" style="color:#d97706;">${email}</a><br/><br/>
                     You can also find us at<br/>
@@ -115,6 +116,10 @@ export async function sendBookingEmails({
               <tr>
                 <td style="background:#f3f4f6;padding:20px 40px;text-align:center;border-top:1px solid #e5e7eb;">
                   <p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} Cool Coo Sauna · Fort William, Scottish Highlands</p>
+                  <p style="margin:8px 0 0;font-size:12px;">
+                    <a href="${process.env.NEXT_PUBLIC_FRONTEND_DOMAIN}/terms" style="color:#9ca3af;">Booking Terms</a> ·
+                    <a href="${process.env.NEXT_PUBLIC_FRONTEND_DOMAIN}/privacy" style="color:#9ca3af;">Privacy Policy</a>
+                  </p>
                 </td>
               </tr>
 

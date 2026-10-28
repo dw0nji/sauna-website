@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import SectionWrapper from './SectionWrapper'
 import FormField from './FormField'
 import BookingCalendar from './BookingCalendar'
@@ -65,6 +66,7 @@ export default function BookingForm({ selectedPackage, setSelectedPackage }: Pro
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [holdExpiresAt, setHoldExpiresAt] = useState<number | null>(null)
   const [price, setPrice] = useState<number | null>(null)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
 
   const { controller } = useBooking()
 
@@ -421,14 +423,35 @@ export default function BookingForm({ selectedPackage, setSelectedPackage }: Pro
               value={form.notes}
               onChange={handleChange}
               rows={3}
-              placeholder="Accessibility needs, allergies, or anything else we should know..."
+              placeholder="Anything we should know to make your visit easier..."
             />
           </FormField>
+
+          <div className="sm:col-span-2 -mt-2 space-y-2">
+            <label className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                required
+                className="mt-0.5 w-4 h-4 accent-amber-600 cursor-pointer"
+              />
+              <span>
+                I agree to the{' '}
+                <Link href="/terms" target="_blank" className="underline text-amber-600 dark:text-amber-400">Booking Terms</Link>
+                , including the 24-hour cancellation policy.
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 pl-7">
+              We use your details only to manage your booking. See our{' '}
+              <Link href="/privacy" target="_blank" className="underline">Privacy Policy</Link>.
+            </p>
+          </div>
 
           <div className="sm:col-span-2">
             <button
               type="submit"
-              disabled={submitting || !selectedPackage}
+              disabled={submitting || !selectedPackage || !agreedToTerms}
               className="w-full bg-gray-900 dark:bg-amber-600 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-700 dark:hover:bg-amber-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting ? (

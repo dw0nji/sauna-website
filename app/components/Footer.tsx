@@ -1,7 +1,17 @@
+import Link from 'next/link'
+import CookieSettingsButton from './CookieSettingsButton'
+import { BUSINESS } from '../lib/business'
+
 const LINKS = [
-  { label: 'The Experience', href: '#amenities' },
-  { label: 'Testimonials', href: '#testimonials' },
-  { label: 'Book Now', href: '#packages' },
+  { label: 'The Experience', href: '/#amenities' },
+  { label: 'Testimonials', href: '/#testimonials' },
+  { label: 'Book Now', href: '/#packages' },
+]
+
+const LEGAL_LINKS = [
+  { label: 'Privacy Policy', href: '/privacy' },
+  { label: 'Cookie Policy', href: '/cookies' },
+  { label: 'Booking Terms', href: '/terms' },
 ]
 
 export default function Footer() {
@@ -10,27 +20,43 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between gap-8 mb-8">
           <div>
-            <p className="text-white font-bold text-lg mb-2">Cool Coo Sauna</p>
-            <p className="text-sm">Mill Cottage, Glenmallie Road, lochyside Caol, PH33 7BA</p>
-            <p className="text-sm">nickynoodonnelly@gmail.com · +447884402926</p>
+            <p className="text-white font-bold text-lg mb-2">{BUSINESS.tradingName}</p>
+            <p className="text-sm">{BUSINESS.address}</p>
+            <p className="text-sm">{BUSINESS.email} · {BUSINESS.phone}</p>
           </div>
-          <nav>
-            <ul className="flex flex-col sm:flex-row gap-4">
-              {LINKS.map((link) => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className="text-sm hover:text-white transition-colors"
-                  >
-                    {link.label}
-                  </a>
+          <div className="flex flex-col sm:flex-row gap-8 sm:gap-16">
+            <nav aria-label="Site">
+              <ul className="flex flex-col gap-3">
+                {LINKS.map((link) => (
+                  <li key={link.href}>
+                    <a
+                      href={link.href}
+                      className="text-sm hover:text-white transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <nav aria-label="Legal">
+              <ul className="flex flex-col gap-3">
+                {LEGAL_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="text-sm hover:text-white transition-colors">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+                <li>
+                  <CookieSettingsButton className="text-sm hover:text-white transition-colors" />
                 </li>
-              ))}
-            </ul>
-          </nav>
+              </ul>
+            </nav>
+          </div>
         </div>
         <div className="border-t border-gray-800 pt-6 text-xs text-gray-600">
-          © {new Date().getFullYear()} Sauna Co. All rights reserved.
+          © {new Date().getFullYear()} {BUSINESS.ownerName} trading as {BUSINESS.tradingName}. All rights reserved.
         </div>
       </div>
     </footer>
