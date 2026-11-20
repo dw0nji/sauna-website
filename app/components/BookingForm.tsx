@@ -12,6 +12,8 @@ import { Package, PackageType } from '../lib/packages'
 
 const CheckoutModal = dynamic(() => import('./CheckoutModal'), { ssr: false })
 
+const MIN_GUESTS = 2
+
 const INPUT =
   'w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
@@ -71,6 +73,7 @@ export default function BookingForm({ selectedPackage, setSelectedPackage }: Pro
   const { controller } = useBooking()
 
   const isSpecialEvent = selectedPackage?.id === 'highland'
+  const maxGuests = isSpecialEvent ? undefined : (selectedPackage?.maxGuests ?? 6)
   const eventTimeslot = isSpecialEvent
     ? (selectedPackage as Package & { timeslot?: TimeSlot }).timeslot
     : undefined
@@ -123,9 +126,9 @@ export default function BookingForm({ selectedPackage, setSelectedPackage }: Pro
   }, [showConfirmation])
 
   function calculatePrice(){
-    if (selectedPackage) {
-      const price = (selectedPackage.price * Number(form.guests)) / 100
-      console.log(price)
+    const guests = Number(form.guests)
+    if (selectedPackage && form.guests !== '' && guests >= MIN_GUESTS) {
+      const price = (selectedPackage.price * guests) / 100
       setPrice(Math.min(price,65))
     } else {
       setPrice(null)
@@ -135,12 +138,37 @@ export default function BookingForm({ selectedPackage, setSelectedPackage }: Pro
   function handleGuestChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
-    const raw = Number(e.target.value)
-    const clamped = Math.max(2, raw)
-    e.target.value = String(clamped)
-    handleChange(e)
-    if (!selectedPackage) return
-    setPrice(Math.min((selectedPackage.price * clamped) / 100, 65))
+    const value = e.target.value
+
+    // Cleared field: keep it empty (unentered) rather than snapping back to 2.
+    if (value === '') {
+      setForm((prev) => ({ ...prev, guests: '' }))
+      setPrice(null)
+      return
+    }
+
+    // Never allow going past the package maximum. The minimum is enforced on
+    // blur so typing isn't hijacked mid-entry.
+    let guests = Math.floor(Number(value))
+    if (Number.isNaN(guests)) return
+    if (maxGuests !== undefined) guests = Math.min(guests, maxGuests)
+
+    setForm((prev) => ({ ...prev, guests: String(guests) }))
+    if (!selectedPackage || guests < MIN_GUESTS) {
+      setPrice(null)
+      return
+    }
+    setPrice(Math.min((selectedPackage.price * guests) / 100, 65))
+  }
+
+  function handleGuestBlur() {
+    if (form.guests === '') return
+    const guests = Number(form.guests)
+    if (guests >= MIN_GUESTS) return
+    setForm((prev) => ({ ...prev, guests: String(MIN_GUESTS) }))
+    if (selectedPackage) {
+      setPrice(Math.min((selectedPackage.price * MIN_GUESTS) / 100, 65))
+    }
   }
 
   function handleChange(
@@ -323,7 +351,7 @@ export default function BookingForm({ selectedPackage, setSelectedPackage }: Pro
             </div>
             <div className="text-right">
               {(() => {
-                const full = selectedPackage ? (selectedPackage.price * Number(form.guests)) / 100 : null
+                const full = selectedPackage && price !== null ? (selectedPackage.price * Number(form.guests)) / 100 : null
                 const discount = full !== null && full > 65 ? +(full - 65).toFixed(2) : 0
                 return (
                   <>
@@ -331,7 +359,7 @@ export default function BookingForm({ selectedPackage, setSelectedPackage }: Pro
                       {discount > 0 && (
                         <span className="text-sm text-gray-400 line-through">£{full?.toFixed(2)}</span>
                       )}
-                      <p className="text-3xl font-black text-gray-900 dark:text-white">£{price?.toFixed(2)}</p>
+                      <p className="text-3xl font-black text-gray-900 dark:text-white">{price !== null ? `£${price.toFixed(2)}` : '—'}</p>
                     </div>
                     {discount > 0 && (
                       <span className="inline-block mt-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 text-xs font-semibold px-2 py-0.5 rounded-full">
@@ -395,12 +423,18 @@ export default function BookingForm({ selectedPackage, setSelectedPackage }: Pro
               className={INPUT}
               name="guests"
               type="number"
-              min="2"
-              max={isSpecialEvent ? undefined : (selectedPackage?.maxGuests ?? 6)}
+              min={MIN_GUESTS}
+              max={maxGuests}
               value={form.guests}
               onChange={handleGuestChange}
+              onBlur={handleGuestBlur}
+              placeholder="Enter number of guests"
+              aria-invalid={form.guests === ''}
               required
             />
+            {form.guests === '' && (
+              <p className="text-xs text-red-500 mt-1">Please enter the number of guests</p>
+            )}
             {selectedPackage && !isSpecialEvent && (
               <p className="text-xs text-gray-400 mt-1">2 to {selectedPackage.maxGuests} guests required for this package</p>
             )}
@@ -451,7 +485,7 @@ export default function BookingForm({ selectedPackage, setSelectedPackage }: Pro
           <div className="sm:col-span-2">
             <button
               type="submit"
-              disabled={submitting || !selectedPackage || !agreedToTerms}
+              disabled={submitting || !selectedPackage || !agreedToTerms || price === null}
               className="w-full bg-gray-900 dark:bg-amber-600 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-700 dark:hover:bg-amber-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting ? (
@@ -461,7 +495,7 @@ export default function BookingForm({ selectedPackage, setSelectedPackage }: Pro
                 </>
               ) : (
                 <>
-                  {selectedPackage ? `Pay £${price} & Confirm` : 'Select a Package Above'}
+                  {!selectedPackage ? 'Select a Package Above' : price !== null ? `Pay £${price} & Confirm` : 'Enter Number of Guests'}
                   {selectedPackage && (
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
